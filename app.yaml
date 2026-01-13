@@ -77,23 +77,24 @@ requirements:
   # Optional: For natural language features
   - databricks-sdk==0.18.0  # Databricks SDK for LLM agent
 
-# Health check configuration (optional but recommended)
-health_check:
-  path: /api/health
-  interval: 30
-  timeout: 10
-  healthy_threshold: 2
-  unhealthy_threshold: 5
+# Health check configuration - DISABLED due to OAuth2 auth requirement
+# Databricks Apps will use default TCP port check instead
+# health_check:
+#   path: /api/health
+#   interval: 30
+#   timeout: 10
+#   healthy_threshold: 2
+#   unhealthy_threshold: 5
 
 # Resource limits (optional)
 resources:
   memory: 2Gi
   cpu: 1
 
-# Startup probe (optional - gives app more time to start)
-startup_probe:
-  path: /api/health
-  initial_delay: 20
-  period: 10
-  timeout: 10
-  failure_threshold: 12
+# Startup probe - DISABLED due to OAuth2 auth requirement
+# startup_probe:
+#   path: /api/health
+#   initial_delay: 20
+#   period: 10
+#   timeout: 10
+#   failure_threshold: 12
