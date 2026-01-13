@@ -292,22 +292,11 @@ async def run_web_ui(config: SimulatorConfig, manager: SimulatorManager, port: i
 
     # NOTE: DO NOT reinitialize OPC-UA here - it should start with PLCs from the beginning
 
-    # Create enhanced web UI (WITHOUT LLM/WebSocket - add those after server starts)
+    # Create enhanced web UI
     web_ui = EnhancedWebUI(config, unified_manager)
     app = web_ui.app
 
-    # CRITICAL: Start HTTP server FIRST before any blocking initialization
-    # Databricks Apps requires port 8000 to respond immediately after OAuth
-    runner = web.AppRunner(app)
-    await runner.setup()
-
-    site = web.TCPSite(runner, config.web_ui.host, port)
-    await site.start()
-
-    logger.info(f"Enhanced Web UI started on http://{config.web_ui.host}:{port}")
-
-    # NOW initialize optional components in background (won't block health checks)
-    # Initialize LLM agent for natural language
+    # Initialize LLM agent for natural language (before starting server)
     try:
         llm_agent = LLMAgentOperator(
             api_base_url=f"http://localhost:{port}/api",
@@ -319,11 +308,20 @@ async def run_web_ui(config: SimulatorConfig, manager: SimulatorManager, port: i
         logger.warning(f"LLM agent initialization failed: {e}. Natural language features disabled.")
         llm_agent = None
 
-    # Create WebSocket server and add route
+    # Create WebSocket server and add route BEFORE starting the server
     ws_server = WebSocketServer(unified_manager, llm_agent)
     app.router.add_get("/ws", ws_server.handle_websocket)
 
-    # Start WebSocket broadcast task
+    # NOW start the HTTP server (after all routes are registered)
+    runner = web.AppRunner(app)
+    await runner.setup()
+
+    site = web.TCPSite(runner, config.web_ui.host, port)
+    await site.start()
+
+    logger.info(f"Enhanced Web UI started on http://{config.web_ui.host}:{port}")
+
+    # Start WebSocket broadcast task (after server is running)
     await ws_server.start_broadcast()
 
     logger.info(f"Features: Real-time charts, WebSocket streaming, Natural language interface")
