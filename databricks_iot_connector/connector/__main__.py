@@ -24,7 +24,6 @@ from typing import Optional
 from connector.config_loader import ConfigLoader
 from connector.bridge import UnifiedBridge
 from connector.credential_manager import CredentialManager, CredentialInjector
-from protos import mqtt_bronze_pb2, modbus_bronze_pb2, opcua_bronze_pb2
 
 # Version
 __version__ = "1.0.0"
@@ -94,12 +93,9 @@ class ConnectorApp:
             logger.info("Initializing UnifiedBridge...")
             self.bridge = UnifiedBridge(self.config)
 
-            # Set protobuf descriptors for each protocol
-            logger.info("Registering protobuf descriptors...")
-            self.bridge.set_protobuf_descriptor("mqtt", mqtt_bronze_pb2.MQTTBronzeRecord.DESCRIPTOR)
-            self.bridge.set_protobuf_descriptor("modbus", modbus_bronze_pb2.ModbusBronzeRecord.DESCRIPTOR)
-            self.bridge.set_protobuf_descriptor("opcua", opcua_bronze_pb2.OPCUABronzeRecord.DESCRIPTOR)
-            logger.info("✓ Protobuf descriptors registered")
+            # TODO: Set protobuf descriptor once schemas are compiled
+            # from connector.protos import iot_record_pb2
+            # self.bridge.set_protobuf_descriptor(iot_record_pb2.IotRecord.DESCRIPTOR)
 
             # Start web GUI if enabled
             if self.gui_enabled:

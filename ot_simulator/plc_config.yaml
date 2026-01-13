@@ -1,0 +1,130 @@
+# PLC Configuration for OT Simulator
+# Assign PLCs to control specific industries
+
+# Format:
+# plc_name:
+#   vendor: siemens|rockwell|schneider|abb|mitsubishi|omron
+#   model: (see plc_models.py for available models)
+#   industries: list of industries this PLC controls
+#   rack: hardware rack number (default: 0)
+#   slot: hardware slot number (default: 2)
+
+plcs:
+  # Renewable Energy - Siemens S7-1500 (fast, high-performance)
+  PLC_RENEWABLE_ENERGY:
+    vendor: siemens
+    model: S7-1500
+    industries:
+      - renewable_energy
+    rack: 0
+    slot: 2
+    enabled: true
+
+  # Mining Operations - Rockwell ControlLogix (North America standard)
+  PLC_MINING:
+    vendor: rockwell
+    model: ControlLogix 5580
+    industries:
+      - mining
+    rack: 0
+    slot: 3
+    enabled: true
+
+  # Utilities & Power - ABB AC800M (process control specialist)
+  PLC_UTILITIES_POWER:
+    vendor: abb
+    model: AC800M
+    industries:
+      - utilities
+      - electric_power
+    rack: 0
+    slot: 4
+    enabled: true
+
+  # Manufacturing - Mitsubishi MELSEC iQ-R (motion control)
+  PLC_MANUFACTURING:
+    vendor: mitsubishi
+    model: MELSEC iQ-R
+    industries:
+      - manufacturing
+      - automotive
+    rack: 0
+    slot: 5
+    enabled: true
+
+  # Oil & Gas - Schneider Modicon M580 (infrastructure focus)
+  PLC_OIL_GAS:
+    vendor: schneider
+    model: Modicon M580
+    industries:
+      - oil_gas
+      - chemical
+    rack: 0
+    slot: 6
+    enabled: true
+
+  # Food & Pharma - Omron Sysmac NJ (packaging/hygiene)
+  PLC_FOOD_PHARMA:
+    vendor: omron
+    model: Sysmac NJ
+    industries:
+      - food_beverage
+      - pharmaceutical
+    rack: 0
+    slot: 7
+    enabled: true
+
+  # Building Automation - Schneider Modicon M340 (BMS standard)
+  PLC_BUILDINGS:
+    vendor: schneider
+    model: Modicon M340
+    industries:
+      - smart_building
+      - data_center
+    rack: 0
+    slot: 8
+    enabled: true
+
+  # Aerospace & Advanced - Siemens S7-1200 (compact, reliable)
+  PLC_AEROSPACE:
+    vendor: siemens
+    model: S7-1200
+    industries:
+      - aerospace
+      - space
+    rack: 0
+    slot: 9
+    enabled: false  # Disabled by default (niche industry)
+
+  # Water & Agriculture - Rockwell CompactLogix (compact, outdoor-rated)
+  PLC_WATER_AGRICULTURE:
+    vendor: rockwell
+    model: CompactLogix 5380
+    industries:
+      - water_wastewater
+      - agriculture
+    rack: 0
+    slot: 10
+    enabled: true
+
+# Global PLC simulation settings
+global_plc_settings:
+  # Enable PLC layer (if false, sensors are accessed directly)
+  enable_plc_simulation: true
+
+  # Simulate scan cycle delays (realistic timing)
+  simulate_scan_delays: true
+
+  # Simulate quality issues (occasional UNCERTAIN/BAD quality codes)
+  simulate_quality_issues: true
+  quality_issue_probability: 0.0005  # 0.05% per read
+
+  # Simulate communication failures (very rare)
+  simulate_comm_failures: true
+  comm_failure_probability: 0.0001  # 0.01% per read
+
+  # Allow operators to force values
+  allow_forcing: true
+
+  # Expose PLC diagnostics (counters, status)
+  expose_diagnostics: true

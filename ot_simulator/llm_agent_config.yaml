@@ -1,0 +1,38 @@
+# LLM Agent Configuration for OT Simulator
+# This file configures the natural language agent for controlling the simulator
+
+# Databricks Configuration
+databricks:
+  # Profile name from ~/.databrickscfg
+  profile: "DEFAULT"
+
+  # Model serving endpoint name
+  # Available options:
+  # - databricks-claude-sonnet-4-5 (recommended for structured output)
+  # - databricks-meta-llama-3-1-70b-instruct
+  # - databricks-meta-llama-3-1-405b-instruct
+  # - databricks-dbrx-instruct
+  # Or use any custom serving endpoint name from your workspace
+  model_endpoint: "databricks-claude-sonnet-4-5"
+
+# Simulator API Configuration
+simulator:
+  # Base URL for simulator API
+  api_base_url: "http://localhost:8989/api"
+
+# LLM Parameters
+llm:
+  # Maximum tokens to generate (500 is sufficient for JSON commands)
+  max_tokens: 500
+
+  # Temperature for generation (0.1 = more deterministic, 1.0 = more creative)
+  # Keep low for structured JSON output
+  temperature: 0.1
+
+  # Conversation history length (number of previous messages to include)
+  history_length: 5
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

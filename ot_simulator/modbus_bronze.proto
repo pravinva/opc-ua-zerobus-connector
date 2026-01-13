@@ -28,4 +28,9 @@ message ModbusBronzeRecord {
     double raw_value = 12;
     int32 scaled_value = 13;
     int32 scale_factor = 14;
+
+    // PLC information (optional)
+    string plc_name = 15;
+    string plc_vendor = 16;
+    string plc_model = 17;
 }

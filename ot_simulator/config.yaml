@@ -1,0 +1,347 @@
+# OT Data Simulator Configuration
+# Professional-grade simulator for OPC-UA, MQTT, and Modbus protocols
+
+# General Settings
+simulator:
+  name: "Databricks OT Data Simulator"
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_file: "ot_simulator.log"
+
+# Web UI Configuration
+web_ui:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8989  # Changed from 8080 to avoid conflicts
+  auto_open_browser: false
+
+# OPC-UA Server Configuration
+opcua:
+  enabled: true
+  endpoint: "opc.tcp://0.0.0.0:4840/ot-simulator/server/"
+  server_name: "OT Data Simulator - OPC UA"
+  namespace_uri: "http://databricks.com/iot-simulator"
+
+  # Security (currently NoSecurity, can be extended)
+  security_policy: "NoSecurity"  # NoSecurity, Basic256Sha256
+
+  # Update frequency
+  update_rate_hz: 2.0  # Updates per second (default 2 Hz)
+
+  # Which industries to simulate (all 15 industries)
+  industries:
+    - mining
+    - utilities
+    - manufacturing
+    - oil_gas
+    - aerospace
+    - space
+    - water_wastewater
+    - electric_power
+    - automotive
+    - chemical
+    - food_beverage
+    - pharmaceutical
+    - data_center
+    - smart_building
+    - agriculture
+
+# MQTT Publisher Configuration
+mqtt:
+  enabled: true
+
+  # Broker settings (publish to external broker)
+  broker:
+    host: "localhost"
+    port: 1883
+    use_tls: false
+    tls_port: 8883
+
+  # Authentication (optional)
+  auth:
+    username: ""
+    password: ""
+
+  # Client settings
+  client_id: "ot-simulator-publisher"
+  clean_session: true
+  keepalive: 60
+  qos: 1  # 0, 1, or 2
+
+  # Topic structure
+  # sensors/{industry}/{sensor_name}/value
+  # sensors/{industry}/{sensor_name}/metadata
+  topic_prefix: "sensors"
+
+  # Payload format
+  payload_format: "sparkplug_b"  # json, string, sparkplug_b (Ignition-compatible)
+  include_metadata: true
+  include_timestamp: true
+
+  # Publishing settings
+  publish_rate_hz: 2.0  # Publications per second
+  batch_publish: false  # Publish all at once vs individual
+
+  # Which industries to simulate (all 15 industries)
+  industries:
+    - mining
+    - utilities
+    - manufacturing
+    - oil_gas
+    - aerospace
+    - space
+    - water_wastewater
+    - electric_power
+    - automotive
+    - chemical
+    - food_beverage
+    - pharmaceutical
+    - data_center
+    - smart_building
+    - agriculture
+
+# Modbus Server Configuration
+modbus:
+  enabled: true
+
+  # TCP Server
+  tcp:
+    enabled: true
+    host: "0.0.0.0"
+    port: 5020  # Standard Modbus is 502, using 5020 to avoid privileged port
+
+  # RTU Server (Serial) - Optional
+  rtu:
+    enabled: false
+    port: "/dev/ttyUSB0"  # Linux: /dev/ttyUSB0, Windows: COM3
+    baudrate: 9600
+    parity: "N"  # N (None), E (Even), O (Odd)
+    stopbits: 1
+    bytesize: 8
+
+  # Slave settings
+  slave_id: 1
+
+  # Register mapping
+  # Each industry gets 1000 registers starting at offset
+  register_mapping:
+    mining:
+      start_address: 0
+      count: 1000
+      type: "holding"  # holding, input
+    utilities:
+      start_address: 1000
+      count: 1000
+      type: "holding"
+    manufacturing:
+      start_address: 2000
+      count: 1000
+      type: "holding"
+    oil_gas:
+      start_address: 3000
+      count: 1000
+      type: "holding"
+    aerospace:
+      start_address: 4000
+      count: 1000
+      type: "holding"
+    space:
+      start_address: 5000
+      count: 1000
+      type: "holding"
+    water_wastewater:
+      start_address: 6000
+      count: 1000
+      type: "holding"
+    electric_power:
+      start_address: 7000
+      count: 1000
+      type: "holding"
+    automotive:
+      start_address: 8000
+      count: 1000
+      type: "holding"
+    chemical:
+      start_address: 9000
+      count: 1000
+      type: "holding"
+    food_beverage:
+      start_address: 10000
+      count: 1000
+      type: "holding"
+    pharmaceutical:
+      start_address: 11000
+      count: 1000
+      type: "holding"
+    data_center:
+      start_address: 12000
+      count: 1000
+      type: "holding"
+    smart_building:
+      start_address: 13000
+      count: 1000
+      type: "holding"
+    agriculture:
+      start_address: 14000
+      count: 1000
+      type: "holding"
+
+  # Value encoding
+  # Modbus registers are 16-bit integers
+  # Floating point values are scaled: value * scale_factor
+  scale_factor: 10  # 42.5°C stored as 425
+
+  # Update settings
+  update_rate_hz: 2.0
+
+  # Which industries to simulate (all 15 industries)
+  industries:
+    - mining
+    - utilities
+    - manufacturing
+    - oil_gas
+    - aerospace
+    - space
+    - water_wastewater
+    - electric_power
+    - automotive
+    - chemical
+    - food_beverage
+    - pharmaceutical
+    - data_center
+    - smart_building
+    - agriculture
+
+# Industry-Specific Sensor Configurations
+# These can override defaults from sensor_models.py
+
+sensors:
+  # Global overrides
+  global:
+    anomaly_probability: 0.001  # 0.1% chance per update
+    anomaly_magnitude: 2.0      # Multiplier for anomalies
+    noise_multiplier: 1.0       # Scale noise (1.0 = default)
+
+  # Industry-specific overrides (optional)
+  mining:
+    enabled: true
+    # Example: disable specific sensors
+    # disabled_sensors:
+    #   - "conveyor_belt_2_speed"
+
+  utilities:
+    enabled: true
+
+  manufacturing:
+    enabled: true
+
+  oil_gas:
+    enabled: true
+
+# Fault Injection Configuration
+faults:
+  enabled: true
+
+  # Automatic random faults
+  auto_inject: false
+  auto_inject_interval_seconds: 300  # Every 5 minutes
+  auto_inject_duration_seconds: 30   # 30 second faults
+
+  # Fault types to inject
+  fault_types:
+    - spike       # Sudden value spike
+    - drift       # Slow drift out of range
+    - oscillation # High-frequency oscillation
+    - freeze      # Value stuck
+    - noise       # Excessive noise
+
+  # Which industries/sensors can have auto faults
+  targets:
+    - mining/*
+    - utilities/*
+    - manufacturing/*
+    - oil_gas/*
+
+# Monitoring & Metrics
+monitoring:
+  # Prometheus metrics endpoint
+  prometheus:
+    enabled: true
+    port: 9091  # Changed from 9090 to avoid conflicts
+    path: "/metrics"
+
+  # Statistics
+  stats:
+    enabled: true
+    update_interval_seconds: 10
+
+    metrics:
+      - sensor_updates_total
+      - sensor_anomalies_total
+      - sensor_current_values
+      - simulator_uptime_seconds
+      - protocol_clients_connected
+
+# Data Recording (Optional)
+recording:
+  enabled: false
+  output_dir: "./recordings"
+  format: "csv"  # csv, parquet, json
+  rotation_interval_seconds: 3600  # New file every hour
+  compression: "gzip"
+
+# Performance Tuning
+performance:
+  # Threading/async settings
+  max_concurrent_updates: 100
+  queue_size: 10000
+
+  # Memory limits
+  max_sensor_history: 1000  # Keep last N values per sensor
+
+  # CPU throttling
+  cpu_limit_percent: 80  # Throttle if above this
+
+# Presets for Quick Configuration
+presets:
+  # Minimal - Single industry, low update rate
+  minimal:
+    opcua:
+      update_rate_hz: 0.5
+      industries: [manufacturing]
+    mqtt:
+      enabled: false
+    modbus:
+      enabled: false
+
+  # Development - All protocols, medium update rate
+  development:
+    opcua:
+      update_rate_hz: 1.0
+    mqtt:
+      update_rate_hz: 1.0
+    modbus:
+      update_rate_hz: 1.0
+
+  # Production - All protocols, high update rate
+  production:
+    opcua:
+      update_rate_hz: 2.0
+    mqtt:
+      update_rate_hz: 2.0
+    modbus:
+      update_rate_hz: 2.0
+
+  # Demo - All industries, with auto faults
+  demo:
+    faults:
+      auto_inject: true
+      auto_inject_interval_seconds: 180
+    opcua:
+      industries: [mining, utilities, manufacturing, oil_gas]
+    mqtt:
+      industries: [mining, utilities, manufacturing, oil_gas]
+    modbus:
+      industries: [mining, utilities, manufacturing, oil_gas]
+
+# Active preset (comment out to use explicit config above)
+# active_preset: "development"

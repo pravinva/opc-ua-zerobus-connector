@@ -29,4 +29,9 @@ message MQTTBronzeRecord {
     int64 timestamp_ms = 11;
     int32 qos = 12;
     bool retain = 13;
+
+    // PLC information (optional)
+    string plc_name = 14;
+    string plc_vendor = 15;
+    string plc_model = 16;
 }

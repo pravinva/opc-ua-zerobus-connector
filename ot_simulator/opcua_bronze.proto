@@ -27,4 +27,9 @@ message OPCUABronzeRecord {
     string value = 11;
     double value_num = 12;
     bytes raw = 13;
+
+    // PLC information (optional)
+    string plc_name = 14;
+    string plc_vendor = 15;
+    string plc_model = 16;
 }
