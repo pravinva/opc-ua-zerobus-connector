@@ -75,7 +75,7 @@ requirements:
 
 # Health check configuration (optional but recommended)
 health_check:
-  path: /
+  path: /api/health
   interval: 30
   timeout: 5
   healthy_threshold: 2
@@ -88,7 +88,7 @@ resources:
 
 # Startup probe (optional - gives app more time to start)
 startup_probe:
-  path: /
+  path: /api/health
   initial_delay: 10
   period: 5
   timeout: 3
