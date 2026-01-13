@@ -1,0 +1,40 @@
+{
+  "workspace_host": "https://e2-demo-field-eng.cloud.databricks.com",
+  "zerobus_endpoint": "1444828305810485.zerobus.us-west-2.cloud.databricks.com",
+  "auth": {
+    "client_id": "52393ed8-ea22-4830-a6ef-6b6545e6be5f",
+    "client_secret_encrypted": "Z0FBQUFBQnBaZ3hBRGVyeENNTXU5U2RKTVNBOEpSa3Y3YzhlenhOWTIyTEltWUhwTDQzUUJpSFAzbk9IVGc4dm1nOEYxSDkxRlFfWVBnS0JfNkI4RmwzUlo3WVdBMXFaSXhGRlhQSG1sSndrcWpFcFhOcG5hOGxoeGRFZ3RDZWk5cGF1X0U4Vkp5cEc=",
+    "_encrypted": true
+  },
+  "target": {
+    "catalog": "opcua",
+    "schema": "scada_data",
+    "table": "opcua_events_bronze"
+  },
+  "selected_sensors": [
+    "mining/conveyor_belt_1_speed",
+    "mining/crusher_1_oil_pressure",
+    "mining/vent_fan_1_speed",
+    "mining/pump_1_flow",
+    "mining/pump_1_discharge_pressure",
+    "oil_gas/pipeline_1_flow",
+    "oil_gas/pipeline_1_pressure",
+    "oil_gas/pipeline_1_density",
+    "oil_gas/pump_station_1_suction_pressure",
+    "oil_gas/pump_station_1_discharge_pressure",
+    "oil_gas/pump_station_1_flow",
+    "oil_gas/pump_station_1_seal_pressure",
+    "oil_gas/separator_1_pressure",
+    "oil_gas/separator_1_level",
+    "oil_gas/separator_1_gas_flow",
+    "oil_gas/separator_1_oil_flow",
+    "oil_gas/separator_1_water_flow",
+    "oil_gas/tank_1_level",
+    "oil_gas/tank_1_pressure",
+    "oil_gas/tank_1_volume",
+    "oil_gas/well_1_pressure",
+    "oil_gas/well_1_flow",
+    "oil_gas/well_1_gas_oil_ratio",
+    "oil_gas/well_1_water_cut"
+  ]
+}

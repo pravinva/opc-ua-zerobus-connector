@@ -1,0 +1,34 @@
+{
+  "workspace_host": "https://e2-demo-field-eng.cloud.databricks.com",
+  "zerobus_endpoint": "1444828305810485.zerobus.us-west-2.cloud.databricks.com",
+  "auth": {
+    "client_id": "52393ed8-ea22-4830-a6ef-6b6545e6be5f",
+    "client_secret_encrypted": "Z0FBQUFBQnBaZ2hpVGxORVVEcm4xT3ZKMkcyaGZhUlFQbU1COU91blRmNGszdFVnWEdzSEgydDl4dFZNVW9oMlIzWEtsMjlkcFM2UWlIY0lzVXI5eUE1SnN5YjlZempXVTE3Vm81VkNaNnJtWURWLXRCWnFGNzhTTk1GNXEzOXJFbXUxRG5sYzc4bTg=",
+    "_encrypted": true
+  },
+  "target": {
+    "catalog": "mqtt",
+    "schema": "scada_data",
+    "table": "mqtt_events_bronze"
+  },
+  "selected_sensors": [
+    "utilities/turbine_1_speed",
+    "utilities/turbine_1_power_output",
+    "utilities/turbine_1_bearing_temp_1",
+    "utilities/turbine_1_bearing_temp_2",
+    "utilities/turbine_1_vibration",
+    "utilities/turbine_1_oil_pressure",
+    "utilities/water_pump_1_flow",
+    "utilities/water_pump_1_discharge_pressure",
+    "utilities/water_pump_1_motor_power",
+    "utilities/water_pump_1_motor_temp",
+    "utilities/water_ph",
+    "utilities/water_conductivity",
+    "utilities/water_turbidity",
+    "utilities/gas_compressor_1_pressure_in",
+    "utilities/gas_compressor_1_pressure_out",
+    "utilities/gas_compressor_1_flow",
+    "utilities/gas_compressor_1_motor_power",
+    "utilities/gas_compressor_1_discharge_temp"
+  ]
+}

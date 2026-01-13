@@ -1,0 +1,41 @@
+{
+  "workspace_host": "https://e2-demo-field-eng.cloud.databricks.com",
+  "zerobus_endpoint": "1444828305810485.zerobus.us-west-2.cloud.databricks.com",
+  "auth": {
+    "client_id": "52393ed8-ea22-4830-a6ef-6b6545e6be5f",
+    "client_secret_encrypted": "Z0FBQUFBQnBaZ3l0ZmVaNGQxY05TSkw0bjh2em12eDRGWUhqWGtrazhzbVlSeHJMVUJzbnRURlBMeTU5RmRPc2xnT0FsV3NCeU9wWk9Kb01tbE1hZWtjOHJnek5JN2xtdFZ1dFB6aXF6UnplYUh6M2otYXJCUnZzQlFXSGpYX1ZqbVIyT01LUWxIcXY=",
+    "_encrypted": true
+  },
+  "target": {
+    "catalog": "modbus",
+    "schema": "scada_data",
+    "table": "modbus_events_bronze"
+  },
+  "selected_sensors": [
+    "smart_building/building_hvac_zone_1_temp",
+    "smart_building/building_hvac_zone_1_humidity",
+    "smart_building/building_hvac_zone_1_co2",
+    "smart_building/building_hvac_ahu_supply_temp",
+    "smart_building/building_hvac_ahu_return_temp",
+    "smart_building/building_hvac_ahu_fan_speed",
+    "smart_building/building_hvac_damper_position",
+    "smart_building/chiller_1_leaving_water_temp",
+    "smart_building/chiller_1_entering_water_temp",
+    "smart_building/chiller_1_power",
+    "smart_building/chiller_1_efficiency",
+    "smart_building/floor_1_lighting_power",
+    "smart_building/floor_1_occupancy",
+    "smart_building/floor_1_light_level",
+    "smart_building/building_total_power",
+    "smart_building/solar_panel_output",
+    "smart_building/battery_storage_soc",
+    "smart_building/domestic_water_flow",
+    "smart_building/domestic_water_pressure",
+    "smart_building/hot_water_temp",
+    "smart_building/elevator_1_position",
+    "smart_building/elevator_1_load",
+    "smart_building/elevator_1_motor_current",
+    "smart_building/main_entrance_occupancy_count",
+    "smart_building/parking_occupancy"
+  ]
+}
