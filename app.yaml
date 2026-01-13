@@ -51,7 +51,7 @@ command:
   - -m
   - ot_simulator
   - --web-ui
-  - --port
+  - --web-port
   - "8989"
 
 # Python dependencies
