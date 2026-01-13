@@ -174,11 +174,18 @@ def setup_logging(level: str = "INFO", log_file: str | None = None):
         handlers=handlers,
     )
 
+    # Suppress ALL warnings - only show INFO and ERROR
+    logging.getLogger().setLevel(logging.INFO)
+
     # Suppress noisy asyncua library logs
-    logging.getLogger("asyncua").setLevel(logging.WARNING)
+    logging.getLogger("asyncua").setLevel(logging.ERROR)
     logging.getLogger("asyncua.server.address_space").setLevel(logging.ERROR)
-    logging.getLogger("asyncua.server.internal_session").setLevel(logging.WARNING)
-    logging.getLogger("asyncua.server.internal_server").setLevel(logging.WARNING)
+    logging.getLogger("asyncua.server.internal_session").setLevel(logging.ERROR)
+    logging.getLogger("asyncua.server.internal_server").setLevel(logging.ERROR)
+
+    # Suppress PLC scan overrun warnings (harmless in cloud environment)
+    logging.getLogger("ot_simulator.plc").setLevel(logging.ERROR)
+    logging.getLogger("ot_simulator.plc_manager").setLevel(logging.INFO)
 
 
 def parse_args():
