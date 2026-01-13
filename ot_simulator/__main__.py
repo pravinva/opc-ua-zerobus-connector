@@ -174,6 +174,12 @@ def setup_logging(level: str = "INFO", log_file: str | None = None):
         handlers=handlers,
     )
 
+    # Suppress noisy asyncua library logs
+    logging.getLogger("asyncua").setLevel(logging.WARNING)
+    logging.getLogger("asyncua.server.address_space").setLevel(logging.ERROR)
+    logging.getLogger("asyncua.server.internal_session").setLevel(logging.WARNING)
+    logging.getLogger("asyncua.server.internal_server").setLevel(logging.WARNING)
+
 
 def parse_args():
     """Parse command line arguments."""
