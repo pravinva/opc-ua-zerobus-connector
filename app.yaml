@@ -1,0 +1,93 @@
+# Databricks Apps Configuration - OT Protocol Simulator
+# Deploy with: databricks apps create --name ot-simulator --source-code-path . --config app.yaml
+
+name: ot-protocol-simulator
+description: |
+  Multi-protocol industrial IoT data simulator with real-time web UI.
+  Simulates 80 sensors across OPC-UA, MQTT, and Modbus protocols.
+
+  Features:
+  - Real-time sensor visualization with charts
+  - Natural language control via LLM agent
+  - 4 industry verticals (mining, utilities, manufacturing, oil & gas)
+  - Live protocol servers for external connections
+
+# Compute configuration
+compute:
+  # Use serverless for cost efficiency
+  type: serverless
+
+  # For custom compute, use:
+  # type: custom
+  # instance_type: m5.large
+
+  min_workers: 1
+  max_workers: 1
+
+# Environment variables
+env:
+  - name: PYTHONUNBUFFERED
+    value: "1"
+  - name: LOG_LEVEL
+    value: "INFO"
+
+  # Optional: Databricks SDK for LLM agent natural language features
+  # Uncomment and set if using natural language control
+  # - name: DATABRICKS_HOST
+  #   value: "{{secrets/iot-demo/workspace-host}}"
+  # - name: DATABRICKS_TOKEN
+  #   value: "{{secrets/iot-demo/token}}"
+
+# Port configuration - Web UI will be accessible on this port
+port: 8989
+
+# Working directory (where your code will run from)
+working_dir: /app
+
+# Command to start the simulator
+# This runs the simulator with web UI on port 8989
+command:
+  - python
+  - -m
+  - ot_simulator
+  - --web-ui
+  - --port
+  - "8989"
+
+# Python dependencies
+# These will be pip installed before starting the app
+requirements:
+  # Protocol libraries
+  - asyncua==1.1.5          # OPC-UA protocol
+  - aiomqtt==2.0.1          # MQTT protocol
+  - pymodbus==3.6.4         # Modbus protocol
+
+  # Web framework
+  - aiohttp==3.9.0          # Async HTTP server for web UI
+
+  # Configuration & utilities
+  - pyyaml==6.0.1           # YAML config parsing
+
+  # Optional: For natural language features
+  - databricks-sdk==0.18.0  # Databricks SDK for LLM agent
+
+# Health check configuration (optional but recommended)
+health_check:
+  path: /
+  interval: 30
+  timeout: 5
+  healthy_threshold: 2
+  unhealthy_threshold: 3
+
+# Resource limits (optional)
+resources:
+  memory: 2Gi
+  cpu: 1
+
+# Startup probe (optional - gives app more time to start)
+startup_probe:
+  path: /
+  initial_delay: 10
+  period: 5
+  timeout: 3
+  failure_threshold: 30
