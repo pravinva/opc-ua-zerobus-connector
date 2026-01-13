@@ -11,7 +11,7 @@ simulator:
 web_ui:
   enabled: true
   host: "0.0.0.0"
-  port: 8989  # Changed from 8080 to avoid conflicts
+  port: 8000  # Port 8000 works with Databricks Apps (8080 has OAuth issues)
   auto_open_browser: false
 
 # OPC-UA Server Configuration

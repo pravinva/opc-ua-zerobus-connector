@@ -35,5 +35,5 @@ def health():
 
 
 if __name__ == '__main__':
-    logger.info("Starting minimal Flask test app on port 8080...")
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    logger.info("Starting minimal Flask test app on port 8000...")
+    app.run(host='0.0.0.0', port=8000, debug=False)

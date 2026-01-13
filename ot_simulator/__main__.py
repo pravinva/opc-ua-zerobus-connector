@@ -295,7 +295,7 @@ async def run_web_ui(config: SimulatorConfig, manager: SimulatorManager, port: i
     app = web_ui.app
 
     # CRITICAL: Start HTTP server FIRST before any blocking initialization
-    # Databricks Apps requires port 8080 to respond immediately after OAuth
+    # Databricks Apps requires port 8000 to respond immediately after OAuth
     runner = web.AppRunner(app)
     await runner.setup()
 

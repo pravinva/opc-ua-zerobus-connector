@@ -1,9 +1,16 @@
 name: ot-protocol-simulator
-description: OT Protocol Simulator - Flask Test
+description: OT Protocol Simulator with OPC-UA, MQTT, Modbus
 
-command: ["python", "simple_flask_app.py"]
+command: ["python", "-m", "ot_simulator", "--web-ui"]
 
-port: 8080
+port: 8000
 
 requirements:
-  - flask==3.0.0
+  - aiohttp==3.9.1
+  - asyncua==1.1.5
+  - aiomqtt==2.0.1
+  - pymodbus==3.6.4
+  - pyyaml==6.0.1
+  - cryptography==41.0.7
+  - databricks-sdk==0.20.0
+  - databricks-zerobus-ingest-sdk==0.1.0
