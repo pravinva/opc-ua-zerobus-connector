@@ -266,14 +266,16 @@ Examples:
 
 async def run_web_ui(config: SimulatorConfig, manager: SimulatorManager, port: int | None = None, unified_manager = None):
     """Run enhanced web UI with WebSocket support."""
+    import os
     from aiohttp import web
     from ot_simulator.enhanced_web_ui import EnhancedWebUI
     from ot_simulator.websocket_server import WebSocketServer
     from ot_simulator.llm_agent_operator import LLMAgentOperator
     from ot_simulator.simulator_manager import SimulatorManager as UnifiedSimulatorManager
 
+    # Port priority: CLI arg > DATABRICKS_APP_PORT env var > config
     if port is None:
-        port = config.web_ui.port
+        port = int(os.getenv('DATABRICKS_APP_PORT', config.web_ui.port))
 
     # Use provided unified manager or create new one (for backward compatibility)
     if unified_manager is None:
