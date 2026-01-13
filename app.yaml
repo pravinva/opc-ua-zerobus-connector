@@ -1,18 +1,9 @@
 name: ot-protocol-simulator
-description: OT Protocol Simulator with OPC-UA and Modbus
+description: OT Protocol Simulator - Minimal Test
 
-command: ["python", "-m", "ot_simulator", "--web-ui", "--web-port", "8080", "--config", "config_databricks_apps.yaml"]
+command: ["python", "simple_app.py"]
 
 port: 8080
 
-env:
-  - name: PYTHONUNBUFFERED
-    value: "1"
-
 requirements:
-  - asyncua==1.1.5
-  - aiomqtt==2.0.1
-  - pymodbus==3.6.4
   - aiohttp==3.9.0
-  - pyyaml==6.0.1
-  - databricks-sdk==0.18.0
