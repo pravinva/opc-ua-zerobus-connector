@@ -25,7 +25,7 @@ protocols:
 
   # MQTT Publisher (uses HiveMQ Cloud broker)
   mqtt:
-    enabled: true
+    enabled: false  # Disabled temporarily to isolate connection issue
     broker:
       host: fac4430cb2214735a5d8088af6d88519.s1.eu.hivemq.cloud
       port: 8883
