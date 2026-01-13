@@ -410,12 +410,17 @@ async def main():
         # Create protocol manager with unified manager (for OPC-UA PLC support)
         manager = SimulatorManager(config, unified_manager=unified_manager)
 
-        # Start simulators in background (OPC-UA will now have PLC manager from start)
-        asyncio.create_task(manager.start(protocols))
+        # Start simulators in background but DON'T await full initialization
+        # This creates the simulator objects synchronously then starts them async
+        simulator_task = asyncio.create_task(manager.start(protocols))
+
+        # Give simulators a moment to be created (not fully started, just instantiated)
+        # This ensures manager.simulators dict is populated before we try to register them
+        await asyncio.sleep(0.1)
 
         # Run enhanced web UI immediately (blocks until stopped)
         # NOTE: Web UI must start ASAP for Databricks Apps health checks
-        # Simulators will initialize in background while web UI is already serving
+        # Simulators will continue initializing in background while web UI is serving
         await run_web_ui(config, manager, args.web_port, unified_manager)
     else:
         # Run simulators directly
