@@ -1,0 +1,62 @@
+# Databricks Apps Configuration with HiveMQ Cloud MQTT Broker
+# This config is optimized for running in Databricks Apps environment
+
+global_config:
+  log_level: INFO
+  data_dir: /tmp/ot_simulator_data
+
+# Industries to simulate
+industries:
+  - mining
+  - utilities
+  - manufacturing
+  - oil_gas
+
+# Protocol configurations
+protocols:
+  # OPC-UA Server (runs on localhost in container)
+  opcua:
+    enabled: true
+    port: 4840
+    endpoint: opc.tcp://0.0.0.0:4840/opcua/server
+    security_mode: None
+    certificate_path: null
+    private_key_path: null
+
+  # MQTT Publisher (uses HiveMQ Cloud broker)
+  mqtt:
+    enabled: true
+    broker:
+      host: fac4430cb2214735a5d8088af6d88519.s1.eu.hivemq.cloud
+      port: 8883
+      use_tls: true
+    auth:
+      username: pravinva
+      password: ${MQTT_PASSWORD}  # From Databricks secrets or env var
+    client_id: ot_simulator_databricks_apps
+    topics:
+      base: iot/scada
+    qos: 1
+    retain: false
+    clean_session: true
+    keepalive: 60
+    industries:
+      - mining
+      - utilities
+      - manufacturing
+      - oil_gas
+
+  # Modbus Server (runs on localhost in container)
+  modbus:
+    enabled: true
+    port: 5020
+    host: 0.0.0.0
+    slave_id: 1
+    register_start: 40001
+    register_count: 100
+
+# Web UI configuration
+web_ui:
+  enabled: true
+  host: 0.0.0.0
+  port: 8989

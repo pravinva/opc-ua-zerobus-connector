@@ -1,0 +1,132 @@
+# Databricks Apps Configuration - Full Stack IoT Connector
+# Deploy with: databricks apps create --name ot-connector-full --source-code-path . --config app_full_stack.yaml
+
+name: ot-connector-full-stack
+description: |
+  Complete end-to-end IoT data pipeline: Simulator → Connector → Unity Catalog
+
+  Architecture:
+  - OT Simulator: Generates 80 sensors (OPC-UA, MQTT, Modbus)
+  - IoT Connector: Collects data from all 3 protocols
+  - ZeroBus SDK: Writes to Unity Catalog via HTTPS
+  - Web UI: Real-time visualization and monitoring
+
+  Data Flow:
+  Simulator → Protocols → Connector → ZeroBus → Unity Catalog Bronze Tables
+
+# Compute configuration
+compute:
+  type: serverless
+  min_workers: 1
+  max_workers: 1
+
+# Environment variables
+env:
+  # Python configuration
+  - name: PYTHONUNBUFFERED
+    value: "1"
+  - name: LOG_LEVEL
+    value: "INFO"
+
+  # Databricks OAuth2 credentials (for ZeroBus)
+  - name: DATABRICKS_HOST
+    value: "{{secrets/iot-demo/workspace-host}}"
+  - name: DATABRICKS_CLIENT_ID
+    value: "{{secrets/iot-demo/client-id}}"
+  - name: DATABRICKS_CLIENT_SECRET
+    value: "{{secrets/iot-demo/client-secret}}"
+
+  # ZeroBus endpoint
+  - name: ZEROBUS_ENDPOINT
+    value: "{{secrets/iot-demo/zerobus-endpoint}}"
+
+  # MQTT broker credentials (HiveMQ Cloud)
+  - name: MQTT_PASSWORD
+    value: "{{secrets/iot-demo/mqtt-password}}"
+
+  # Connector encryption key
+  - name: CONNECTOR_MASTER_PASSWORD
+    value: "{{secrets/iot-demo/master-password}}"
+
+# Port configuration - Web UI accessible on this port
+port: 8989
+
+# Working directory
+working_dir: /app
+
+# Startup command - launches both connector and simulator
+command:
+  - /bin/bash
+  - -c
+  - |
+    echo "==================================="
+    echo "Starting Full Stack IoT Connector"
+    echo "==================================="
+
+    # Start IoT Connector in background
+    echo "Starting IoT Connector..."
+    python -m connector --config connector_config_databricks_apps.yaml &
+    CONNECTOR_PID=$!
+
+    # Wait for connector to initialize
+    echo "Waiting for connector to start..."
+    sleep 5
+
+    # Check if connector is still running
+    if ! kill -0 $CONNECTOR_PID 2>/dev/null; then
+        echo "ERROR: Connector failed to start"
+        exit 1
+    fi
+
+    echo "Connector started (PID: $CONNECTOR_PID)"
+
+    # Start OT Simulator with Web UI
+    echo "Starting OT Simulator with Web UI..."
+    python -m ot_simulator --web-ui --config config_databricks_apps.yaml
+
+    # If simulator exits, stop connector
+    echo "Simulator stopped, cleaning up..."
+    kill $CONNECTOR_PID 2>/dev/null || true
+
+# Python dependencies
+requirements:
+  # Protocol libraries
+  - asyncua==1.1.5          # OPC-UA protocol
+  - aiomqtt==2.0.1          # MQTT protocol client
+  - pymodbus==3.6.4         # Modbus protocol
+
+  # Web framework
+  - aiohttp==3.9.0          # Async HTTP server for web UI
+
+  # Configuration & utilities
+  - pyyaml==6.0.1           # YAML config parsing
+
+  # Databricks SDK
+  - databricks-sdk==0.18.0  # For OAuth2 and LLM features
+
+  # ZeroBus and connector dependencies
+  - databricks-zerobus-ingest-sdk>=0.1.0  # ZeroBus SDK
+  - protobuf==4.25.1        # Protobuf serialization
+  - grpcio-tools==1.60.0    # Protobuf compiler tools
+  - cryptography==41.0.7    # Credential encryption
+
+# Health check configuration
+health_check:
+  path: /
+  interval: 60
+  timeout: 10
+  healthy_threshold: 2
+  unhealthy_threshold: 5
+
+# Resource limits
+resources:
+  memory: 4Gi   # Increased for both simulator and connector
+  cpu: 2        # Increased for processing multiple protocols
+
+# Startup probe - gives app time to start both components
+startup_probe:
+  path: /
+  initial_delay: 15
+  period: 5
+  timeout: 5
+  failure_threshold: 30

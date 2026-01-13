@@ -1,0 +1,122 @@
+# IoT Connector Configuration for Databricks Apps
+# This config connects to the simulator running in the same container
+# and writes to Unity Catalog via ZeroBus
+
+# Data sources (all running in same Databricks Apps container)
+sources:
+  # OPC-UA simulator (localhost)
+  - name: simulator_opcua
+    endpoint: opc.tcp://localhost:4840
+    protocol: opcua
+    enabled: true
+    security_mode: None
+    reconnect:
+      enabled: true
+      initial_delay: 1
+      max_delay: 60
+      backoff_multiplier: 2
+
+  # MQTT from HiveMQ Cloud (internet)
+  - name: simulator_mqtt_cloud
+    endpoint: mqtt://fac4430cb2214735a5d8088af6d88519.s1.eu.hivemq.cloud:8883
+    protocol: mqtt
+    use_tls: true
+    auth:
+      username: pravinva
+      password: ${MQTT_PASSWORD}  # From Databricks secrets
+    topics:
+      - iot/scada/#  # Subscribe to all simulator topics
+    qos: 1
+    clean_session: false
+    enabled: true
+    reconnect:
+      enabled: true
+      initial_delay: 1
+      max_delay: 60
+      backoff_multiplier: 2
+
+  # Modbus simulator (localhost)
+  - name: simulator_modbus
+    endpoint: modbus://localhost:5020
+    protocol: modbus
+    slave_id: 1
+    enabled: true
+    poll_interval: 1000  # Poll every second
+    registers:
+      start: 40001
+      count: 100
+    reconnect:
+      enabled: true
+      initial_delay: 1
+      max_delay: 60
+      backoff_multiplier: 2
+
+# ZeroBus configuration for Unity Catalog ingestion
+zerobus:
+  # Databricks workspace (OAuth2 endpoint)
+  workspace_host: ${DATABRICKS_HOST}
+
+  # ZeroBus ingestion endpoint
+  zerobus_endpoint: ${ZEROBUS_ENDPOINT}
+
+  # OAuth2 M2M authentication
+  auth:
+    client_id: ${DATABRICKS_CLIENT_ID}
+    client_secret: ${DATABRICKS_CLIENT_SECRET}
+
+  # Unity Catalog destination
+  target:
+    catalog: main
+    schema: scada_data
+    table: iot_events_bronze
+
+  # Batch configuration
+  batch_size: 100
+  batch_timeout_ms: 1000
+
+  # Retry configuration
+  retry:
+    max_attempts: 3
+    initial_delay_ms: 100
+    max_delay_ms: 5000
+    backoff_multiplier: 2
+
+# Backpressure management
+backpressure:
+  # Memory queue
+  max_queue_size: 10000
+  drop_policy: oldest  # Drop oldest when full
+
+  # Disk spool (for resilience)
+  spool_enabled: true
+  spool_path: /tmp/connector_spool
+  max_spool_size_mb: 100
+
+  # Circuit breaker
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 5
+    success_threshold: 2
+    timeout_seconds: 60
+
+# Monitoring
+monitoring:
+  # Prometheus metrics
+  prometheus:
+    enabled: false  # Disable for now, web UI on simulator
+    port: 9090
+
+  # Health check
+  health_check:
+    enabled: true
+    port: 8081
+
+# Web GUI (disabled - simulator has the UI)
+web_gui:
+  enabled: false
+
+# Logging
+logging:
+  level: INFO
+  format: json
+  output: stdout
