@@ -53,6 +53,8 @@ command:
   - --web-ui
   - --web-port
   - "8989"
+  - --config
+  - config_databricks_apps.yaml
 
 # Python dependencies
 # These will be pip installed before starting the app
