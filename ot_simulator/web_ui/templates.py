@@ -14,6 +14,7 @@ def get_head_html() -> str:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Databricks OT Simulator - Professional Edition</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23FF3621;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23FF8A00;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='20' fill='url(%23grad)'/%3E%3Cg fill='white'%3E%3Ccircle cx='30' cy='50' r='8'/%3E%3Ccircle cx='50' cy='30' r='8'/%3E%3Ccircle cx='50' cy='70' r='8'/%3E%3Ccircle cx='70' cy='50' r='8'/%3E%3Cline x1='30' y1='50' x2='50' y2='30' stroke='white' stroke-width='3'/%3E%3Cline x1='30' y1='50' x2='50' y2='70' stroke='white' stroke-width='3'/%3E%3Cline x1='50' y1='30' x2='70' y2='50' stroke='white' stroke-width='3'/%3E%3Cline x1='50' y1='70' x2='70' y2='50' stroke='white' stroke-width='3'/%3E%3C/g%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
