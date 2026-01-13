@@ -2,7 +2,7 @@
 # This config is optimized for running in Databricks Apps environment
 
 global_config:
-  log_level: INFO
+  log_level: ERROR  # Suppress WARNING logs (PLC scan overruns)
   data_dir: /tmp/ot_simulator_data
 
 # Industries to simulate
