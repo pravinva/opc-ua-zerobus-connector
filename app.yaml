@@ -1,9 +1,9 @@
 name: ot-protocol-simulator
-description: OT Protocol Simulator - Minimal Test
+description: OT Protocol Simulator - Flask Test
 
-command: ["python", "simple_app.py"]
+command: ["python", "simple_flask_app.py"]
 
 port: 8080
 
 requirements:
-  - aiohttp==3.9.0
+  - flask==3.0.0
