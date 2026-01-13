@@ -31,6 +31,10 @@ env:
   - name: LOG_LEVEL
     value: "INFO"
 
+  # HiveMQ Cloud credentials
+  - name: MQTT_PASSWORD
+    value: "{{secrets/iot-demo/mqtt-password}}"
+
   # Optional: Databricks SDK for LLM agent natural language features
   # Uncomment and set if using natural language control
   # - name: DATABRICKS_HOST
