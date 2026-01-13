@@ -412,10 +412,9 @@ async def main():
         # Start simulators in background (OPC-UA will now have PLC manager from start)
         asyncio.create_task(manager.start(protocols))
 
-        # Give simulators time to start
-        await asyncio.sleep(2)
-
-        # Run enhanced web UI (blocks until stopped)
+        # Run enhanced web UI immediately (blocks until stopped)
+        # NOTE: Web UI must start ASAP for Databricks Apps health checks
+        # Simulators will initialize in background while web UI is already serving
         await run_web_ui(config, manager, args.web_port, unified_manager)
     else:
         # Run simulators directly
