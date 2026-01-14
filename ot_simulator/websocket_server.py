@@ -296,6 +296,236 @@ class WebSocketServer:
 
                 return {"success": True, "message": "\n".join(lines)}
 
+            elif command.action == "wot_query":
+                # WoT semantic query - filter Thing Description browser
+                params = command.parameters or {}
+                semantic_type = params.get("semantic_type")
+                industry = params.get("industry")
+                unit = params.get("unit")
+                search_text = params.get("search_text")
+
+                # Build response with filter parameters
+                filters_applied = []
+                if semantic_type:
+                    filters_applied.append(f"semantic type: {semantic_type}")
+                if industry:
+                    filters_applied.append(f"industry: {industry}")
+                if unit:
+                    filters_applied.append(f"unit: {unit}")
+                if search_text:
+                    filters_applied.append(f"search: '{search_text}'")
+
+                filters_str = ", ".join(filters_applied) if filters_applied else "none"
+
+                return {
+                    "success": True,
+                    "message": f"Applying WoT filters: {filters_str}\n\nCheck the WoT browser to see filtered results!",
+                    "wot_filters": params  # Include for frontend to apply
+                }
+
+            elif command.action == "explain_wot_concept":
+                # Explain WoT/ontology concepts
+                target = command.target or "general"
+                context = command.parameters.get("context", "") if command.parameters else ""
+
+                # Build educational response
+                explanations = {
+                    "saref": "SAREF (Smart Appliances Reference) is an ETSI standard ontology for IoT devices.\n\n"
+                             "Key concepts:\n"
+                             "• saref:TemperatureSensor - Measures temperature (50+ in this simulator)\n"
+                             "• saref:PowerSensor - Measures electrical power (40+ sensors)\n"
+                             "• saref:PressureSensor - Measures pressure (30+ sensors)\n\n"
+                             "Benefits: Protocol-independent device descriptions, automatic discovery, semantic queries.",
+
+                    "sosa": "SOSA/SSN (Semantic Sensor Network) is a W3C standard for sensor metadata.\n\n"
+                            "Key concepts:\n"
+                            "• sosa:Sensor - Generic sensor for observations\n"
+                            "• sosa:observes - Links sensor to what it measures\n"
+                            "• Used for: Vibration, speed, force sensors\n\n"
+                            "Benefits: Richer context, observation patterns, sensor capabilities.",
+
+                    "qudt": "QUDT (Quantities, Units, Dimensions, Types) provides standardized unit identifiers.\n\n"
+                            "Examples:\n"
+                            "• °C → http://qudt.org/vocab/unit/DEG_C\n"
+                            "• kW → http://qudt.org/vocab/unit/KiloW\n"
+                            "• bar → http://qudt.org/vocab/unit/BAR\n\n"
+                            "Benefits: Automatic unit conversion, machine-readable, protocol-independent.",
+
+                    "thing_description": "W3C WoT Thing Description (TD) is a JSON-LD document describing IoT devices.\n\n"
+                                        "Structure:\n"
+                                        "• @context: Ontology definitions\n"
+                                        "• properties: 379 sensors with metadata\n"
+                                        "• forms: Protocol bindings (OPC-UA, MQTT, Modbus)\n"
+                                        "• security: Authentication methods\n\n"
+                                        "This simulator's TD is at: /api/opcua/thing-description",
+
+                    "semantic_type": "Semantic types classify sensors by WHAT they measure, not HOW.\n\n"
+                                    "Example: crusher_1_motor_power and compressor_1_motor_power\n"
+                                    "• Different industries (mining vs oil_gas)\n"
+                                    "• Different protocols (OPC-UA vs MQTT)\n"
+                                    "• Same semantic type: saref:PowerSensor\n\n"
+                                    "Query: 'Show all power sensors' works across everything!",
+
+                    "ontology": "An ontology is a formal way to represent knowledge about a domain.\n\n"
+                               "For IoT:\n"
+                               "• Defines sensor types (TemperatureSensor, PowerSensor)\n"
+                               "• Defines relationships (sensor measures property)\n"
+                               "• Enables semantic queries (find all temp sensors)\n\n"
+                               "This simulator uses SAREF, SOSA, and QUDT ontologies."
+                }
+
+                explanation = explanations.get(target.lower(), command.reasoning)
+                return {"success": True, "message": explanation}
+
+            elif command.action == "recommend_sensors":
+                # Recommend sensors for a use case
+                params = command.parameters or {}
+                use_case = params.get("use_case", "").lower()
+                industry_filter = params.get("industry")
+
+                recommendations = {
+                    "equipment_health": {
+                        "sensors": [
+                            "mining/crusher_1_vibration_x (Bearing wear detection)",
+                            "mining/crusher_1_vibration_y (Imbalance detection)",
+                            "mining/crusher_1_bearing_temp (Overheating alert)",
+                            "utilities/transformer_1_oil_temp (Thermal stress)",
+                            "manufacturing/robot_1_joint_1_torque (Mechanical wear)"
+                        ],
+                        "explanation": "Equipment health monitoring focuses on:\n"
+                                      "• Vibration (mechanical degradation)\n"
+                                      "• Temperature (thermal stress)\n"
+                                      "• Current/torque (electrical/mechanical load)"
+                    },
+                    "energy_monitoring": {
+                        "sensors": [
+                            "utilities/grid_main_frequency (Grid stability)",
+                            "oil_gas/compressor_1_motor_power (High consumption: 300-900 kW)",
+                            "mining/crusher_1_motor_power (200-800 kW range)",
+                            "utilities/inverter_1_efficiency (Energy efficiency)",
+                            "manufacturing/press_1_force (Process efficiency)"
+                        ],
+                        "explanation": "Energy monitoring focuses on:\n"
+                                      "• Power sensors (consumption tracking)\n"
+                                      "• Efficiency metrics (waste reduction)\n"
+                                      "• Frequency (grid quality)"
+                    },
+                    "safety": {
+                        "sensors": [
+                            "oil_gas/h2s_detector_1_ppm (Toxic gas: alert > 10 ppm)",
+                            "oil_gas/gas_detector_1_ppm (Combustible gas)",
+                            "oil_gas/separator_1_pressure (Overpressure risk)",
+                            "oil_gas/flare_temperature (Fire risk: 500-1500°C)",
+                            "mining/dust_concentration (Air quality)"
+                        ],
+                        "explanation": "Safety monitoring focuses on:\n"
+                                      "• Gas detection (toxic/combustible)\n"
+                                      "• Pressure (explosion risk)\n"
+                                      "• Temperature (fire risk)"
+                    },
+                    "predictive_maintenance": {
+                        "sensors": [
+                            "All vibration sensors (trend analysis)",
+                            "All bearing_temp sensors (thermal trending)",
+                            "All motor current sensors (electrical trending)",
+                            "mining/mill_1_power (load pattern analysis)",
+                            "utilities/transformer_1_load (capacity trending)"
+                        ],
+                        "explanation": "Predictive maintenance uses:\n"
+                                      "• Historical trending\n"
+                                      "• Pattern recognition\n"
+                                      "• Anomaly detection\n"
+                                      "• Degradation curves"
+                    },
+                    "process_optimization": {
+                        "sensors": [
+                            "oil_gas/pipeline_1_flow (Throughput optimization)",
+                            "mining/ore_flow_rate (Material handling)",
+                            "oil_gas/tank_1_level (Inventory management)",
+                            "manufacturing/assembly_line_speed (Cycle time)",
+                            "oil_gas/separator_1_level (Process efficiency)"
+                        ],
+                        "explanation": "Process optimization focuses on:\n"
+                                      "• Flow rates (throughput)\n"
+                                      "• Level sensors (inventory)\n"
+                                      "• Speed sensors (cycle time)"
+                    }
+                }
+
+                rec = recommendations.get(use_case)
+                if rec:
+                    sensor_list = "\n• ".join(rec["sensors"])
+                    message = f"{rec['explanation']}\n\nRecommended sensors:\n• {sensor_list}\n\n" + command.reasoning
+                else:
+                    message = command.reasoning  # LLM's own recommendation
+
+                return {"success": True, "message": message}
+
+            elif command.action == "compare_sensors":
+                # Comparative analysis of sensors
+                params = command.parameters or {}
+                dimension = params.get("dimension", "by_industry")
+
+                if dimension == "by_industry":
+                    message = (
+                        "📊 Sensor Comparison by Industry:\n\n"
+                        "Mining (16 sensors):\n"
+                        "• Focus: Heavy equipment, material handling\n"
+                        "• Key types: Power, vibration, flow, temperature\n"
+                        "• Highlights: crusher_1_motor_power (200-800 kW)\n\n"
+                        "Utilities (17 sensors):\n"
+                        "• Focus: Power grid, transformers, renewable energy\n"
+                        "• Key types: Power, voltage, current, efficiency\n"
+                        "• Highlights: grid_main_frequency (59.5-60.5 Hz critical)\n\n"
+                        "Manufacturing (18 sensors):\n"
+                        "• Focus: Robotics, assembly, welding\n"
+                        "• Key types: Torque, force, position, current\n"
+                        "• Highlights: 6-axis robot with joint torque sensors\n\n"
+                        "Oil & Gas (27 sensors - MOST DIVERSE):\n"
+                        "• Focus: Pipelines, compression, safety\n"
+                        "• Key types: Flow, pressure, temperature, gas detection\n"
+                        "• Highlights: H2S detection (safety critical)"
+                    )
+                elif dimension == "by_semantic_type":
+                    message = (
+                        "🏷️ Sensor Comparison by Semantic Type:\n\n"
+                        "saref:TemperatureSensor (50+ sensors):\n"
+                        "• Most common type across all industries\n"
+                        "• Range: 18°C (paint booth) to 1500°C (flare)\n"
+                        "• Unit: All use °C with QUDT URIs\n\n"
+                        "saref:PowerSensor (40+ sensors):\n"
+                        "• Second most common\n"
+                        "• Range: 5 kW (spindle) to 900 kW (compressor)\n"
+                        "• Critical for energy monitoring\n\n"
+                        "saref:PressureSensor (30+ sensors):\n"
+                        "• Concentrated in oil_gas industry\n"
+                        "• Units: bar, PSI (standardized via QUDT)\n"
+                        "• Safety critical (overpressure risk)\n\n"
+                        "sosa:Sensor (25+ sensors):\n"
+                        "• Generic type for: vibration, speed, force\n"
+                        "• Used when no specific SAREF type fits"
+                    )
+                elif dimension == "by_unit":
+                    message = (
+                        "📏 Sensor Comparison by Unit:\n\n"
+                        "Temperature (°C): 50+ sensors\n"
+                        "• QUDT URI: http://qudt.org/vocab/unit/DEG_C\n"
+                        "• Range: -20°C to 1500°C\n\n"
+                        "Power (kW/MW): 40+ sensors\n"
+                        "• QUDT URIs: KiloW, MegaW\n"
+                        "• Range: 5 kW to 900 kW\n\n"
+                        "Pressure (bar/PSI): 30+ sensors\n"
+                        "• QUDT URIs: BAR, PSI\n"
+                        "• Critical for safety\n\n"
+                        "Electrical (A/V): 25+ sensors\n"
+                        "• QUDT URIs: A (ampere), V (volt)\n"
+                        "• Power quality monitoring"
+                    )
+                else:
+                    message = command.reasoning
+
+                return {"success": True, "message": message}
+
             elif command.action == "chat":
                 # Conversational response
                 return {"success": True, "message": command.reasoning}
