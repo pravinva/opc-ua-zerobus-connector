@@ -128,7 +128,7 @@ The simulator now includes **5 of 8 priority visualizations** for industrial ML 
 - Priority 7: 3D Equipment View (5-7 days)
 - Priority 8: Waterfall Plot (3-4 days)
 
-**Documentation**: See `VISUALIZATION_STATUS.md` for complete details
+**Documentation**: See `docs/VISUALIZATION_STATUS.md` for complete details
 
 ---
 
@@ -162,8 +162,8 @@ python -m ot_simulator.llm_agent_operator
 - Configurable via `llm_agent_config.yaml`
 
 **Documentation**:
-- `QUICK_START_NATURAL_LANGUAGE.md` - 5-minute guide
-- `NATURAL_LANGUAGE_OPERATOR_GUIDE.md` - Comprehensive 400+ line guide
+- `docs/QUICK_START_NATURAL_LANGUAGE.md` - 5-minute guide
+- `docs/NATURAL_LANGUAGE_OPERATOR_GUIDE.md` - Comprehensive 400+ line guide
 
 ---
 
@@ -258,7 +258,7 @@ openssl req -x509 -newkey rsa:2048 -keyout server_key.pem \
   -subj "/CN=ot-simulator/O=Databricks/C=US"
 ```
 
-**Documentation**: See `SECURITY_IMPLEMENTATION_GUIDE.md`
+**Documentation**: See `docs/SECURITY_IMPLEMENTATION_GUIDE.md`
 
 ---
 
@@ -284,7 +284,7 @@ ngrok tcp 4840
 # Use: opc.tcp://0.tcp.ngrok.io:<port>/ot-simulator/server/
 ```
 
-**Documentation**: See `IGNITION_INTEGRATION_GUIDE.md` for complete setup guide
+**Documentation**: See `docs/IGNITION_INTEGRATION_GUIDE.md` for complete setup guide
 
 ---
 
@@ -385,11 +385,17 @@ opc-ua-zerobus-connector/
 │   ├── config.yaml                # Simulator configuration
 │   └── certs/                     # Security certificates
 │
-├── VISUALIZATION_STATUS.md        # Visualization roadmap
-├── SECURITY_IMPLEMENTATION_GUIDE.md
-├── IGNITION_INTEGRATION_GUIDE.md
-├── PROTOCOLS.md                   # Protocol configuration guide
-├── DEPLOYMENT_GUIDE_DATABRICKS_APPS.md
+├── docs/                          # Documentation
+│   ├── VISUALIZATION_STATUS.md   # Visualization roadmap
+│   ├── SECURITY_IMPLEMENTATION_GUIDE.md
+│   ├── IGNITION_INTEGRATION_GUIDE.md
+│   ├── DEPLOYMENT_GUIDE_DATABRICKS_APPS.md
+│   └── ... (30+ technical guides)
+│
+├── tests/                         # Test files
+│   ├── test_nl_ai_wot_integration.py
+│   └── test_ws_manual.py
+│
 ├── Dockerfile                     # Container build
 ├── requirements.txt               # Python dependencies
 └── README.md                      # This file
@@ -419,7 +425,7 @@ opc-ua-zerobus-connector/
 - **Endpoint**: `modbus://0.0.0.0:502` (TCP) or `/dev/ttyUSB0` (RTU)
 - **Clients**: ModScan, QModMaster, Ignition Modbus
 
-**Configuration Guide**: See `PROTOCOLS.md`
+**Configuration Guide**: See `docs/PROTOCOLS.md`
 
 ---
 
@@ -545,7 +551,7 @@ docker run -d --name iot-connector \
 ```bash
 databricks apps deploy ot-simulator --config app.yaml
 ```
-See `DEPLOYMENT_GUIDE_DATABRICKS_APPS.md` for complete guide.
+See `docs/DEPLOYMENT_GUIDE_DATABRICKS_APPS.md` for complete guide.
 
 ### 4. AWS EC2 / Azure VM
 ```bash
@@ -553,7 +559,7 @@ See `DEPLOYMENT_GUIDE_DATABRICKS_APPS.md` for complete guide.
 sudo systemctl enable ot-simulator
 sudo systemctl start ot-simulator
 ```
-See `IGNITION_INTEGRATION_GUIDE.md` for cloud deployment.
+See `docs/IGNITION_INTEGRATION_GUIDE.md` for cloud deployment.
 
 ---
 

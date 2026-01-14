@@ -1,4 +1,3 @@
-multi_agent_build_guide.txt
 .venv/
 __pycache__/
 *.pyc
@@ -6,10 +5,12 @@ __pycache__/
 dist/
 build/
 *.egg-info/
-.opcua2uc.log
-.opcua2uc.pid
-ot_simulator.log
 venv/
+
+# Log files
+*.log
+*.pid
+
 # Security certificates (self-signed for development)
 ot_simulator/certs/*.pem
 ot_simulator/certs/*.key
