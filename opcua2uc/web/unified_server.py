@@ -11,6 +11,7 @@ from opcua2uc.databricks_auth import DatabricksAuthError, oauth_client_credentia
 from opcua2uc.databricks_token import fetch_zerobus_token
 from opcua2uc.databricks_uc import get_table_schema
 from opcua2uc.protocols.factory import create_protocol_client, detect_protocol_type
+from opcua2uc.wot.wot_bridge import WoTBridge
 from opcua2uc.zerobus_producer import ZerobusConfigError, make_sample_bronze_record, zerobus_test_ingest
 
 
@@ -39,6 +40,7 @@ class UnifiedWebServer:
         self.app.router.add_post("/api/sources/{name}/test", self._test_source)
         self.app.router.add_post("/api/sources/{name}/start", self._start_source)
         self.app.router.add_post("/api/sources/{name}/stop", self._stop_source)
+        self.app.router.add_post("/api/sources/from-td", self._add_source_from_td)
 
         self.app.router.add_get("/api/config", self._get_config)
         self.app.router.add_post("/api/config", self._set_config)
@@ -397,6 +399,101 @@ class UnifiedWebServer:
 
     async def _ready(self, request: web.Request) -> web.StreamResponse:
         return web.json_response({"status": "ready"})
+
+    async def _add_source_from_td(self, request: web.Request) -> web.StreamResponse:
+        """Add source from Thing Description URL (W3C WoT support).
+
+        Request:
+        {
+          "thing_description": "http://simulator:8000/api/opcua/thing-description",
+          "name": "ot-simulator"  # Optional, defaults to TD title
+        }
+
+        Response:
+        {
+          "ok": true,
+          "name": "ot-simulator",
+          "endpoint": "opc.tcp://simulator:4840",
+          "protocol_type": "opcua",
+          "thing_id": "urn:dev:ops:databricks-ot-simulator",
+          "properties": 379,
+          "semantic_types": {"mining/crusher_1_motor_power": "saref:PowerSensor", ...}
+        }
+        """
+        try:
+            payload = await request.json()
+        except Exception:
+            body = await request.text()
+            return web.json_response({"error": "Invalid JSON", "body": body}, status=400)
+
+        if not isinstance(payload, dict):
+            return web.json_response({"error": "Request must be a JSON object"}, status=400)
+
+        td_url = (payload.get("thing_description") or "").strip()
+        if not td_url:
+            return web.json_response({"error": "Missing field: thing_description"}, status=400)
+
+        override_name = (payload.get("name") or "").strip()
+
+        try:
+            # Fetch and parse Thing Description
+            wot_bridge = WoTBridge()
+            td = await wot_bridge.td_client.fetch_td(td_url)
+            thing_config = wot_bridge.td_client.parse_td(td)
+
+            # Use override name if provided, otherwise use TD title
+            source_name = override_name if override_name else thing_config.name
+
+            # Check if source already exists
+            cfg = load_config(self.config_path)
+            if any((s.get("name") or "").strip() == source_name for s in cfg.sources):
+                return web.json_response(
+                    {"error": f"Source already exists: {source_name}"},
+                    status=409
+                )
+
+            # Create source config from Thing Description
+            source_config = {
+                "name": source_name,
+                "endpoint": thing_config.endpoint,
+                "protocol_type": thing_config.protocol_type.value,
+                "thing_description": td_url,
+                "thing_id": thing_config.thing_id,
+                "semantic_types": thing_config.semantic_types,
+                "unit_uris": thing_config.unit_uris,
+            }
+
+            # Add protocol-specific config from ThingConfig
+            protocol_config = wot_bridge._create_protocol_config(thing_config)
+            for key in ["variable_limit", "publishing_interval_ms", "topics", "qos", "unit_id", "registers", "poll_interval_ms", "node_ids"]:
+                if key in protocol_config:
+                    source_config[key] = protocol_config[key]
+
+            # Save to config
+            cfg.sources.append(source_config)
+            save_config(self.config_path, cfg)
+            self.bridge.set_config(cfg)
+
+            # Return response
+            return web.json_response({
+                "ok": True,
+                "name": source_name,
+                "endpoint": thing_config.endpoint,
+                "protocol_type": thing_config.protocol_type.value,
+                "thing_id": thing_config.thing_id,
+                "properties": len(thing_config.properties),
+                "semantic_types": thing_config.semantic_types,
+                "unit_uris": thing_config.unit_uris,
+            })
+
+        except Exception as e:
+            return web.json_response(
+                {
+                    "ok": False,
+                    "error": f"{type(e).__name__}: {e}",
+                },
+                status=500
+            )
 
     async def start(self) -> None:
         runner = web.AppRunner(self.app)

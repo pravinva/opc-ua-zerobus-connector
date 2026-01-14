@@ -37,9 +37,15 @@ class ProtocolRecord:
     status_code: int = 0
     status: str = "Good"
 
+    # W3C WoT semantic metadata (added for WoT support)
+    thing_id: str | None = None
+    thing_title: str | None = None
+    semantic_type: str | None = None  # e.g., "saref:TemperatureSensor"
+    unit_uri: str | None = None       # e.g., "http://qudt.org/vocab/unit/DEG_C"
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
-        return {
+        result = {
             "event_time": int(self.event_time_ms) * 1000,  # Convert to microseconds for UC TIMESTAMP
             "ingest_time": int(time.time() * 1_000_000),
             "source_name": self.source_name,
@@ -53,6 +59,18 @@ class ProtocolRecord:
             "status_code": self.status_code,
             "status": self.status,
         }
+
+        # Add semantic fields if present (WoT support)
+        if self.thing_id:
+            result["thing_id"] = self.thing_id
+        if self.thing_title:
+            result["thing_title"] = self.thing_title
+        if self.semantic_type:
+            result["semantic_type"] = self.semantic_type
+        if self.unit_uri:
+            result["unit_uri"] = self.unit_uri
+
+        return result
 
 
 @dataclass
