@@ -1,0 +1,5 @@
+# OPC UA Certificates (development only - do not commit private keys)
+ot_simulator/certs/*.pem
+ot_simulator/certs/trusted/
+opcua2uc/certs/*.pem
+databricks_iot_connector/certs/*.pem

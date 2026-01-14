@@ -2,18 +2,29 @@
 
 Runs a fully functional OPC-UA server that can be connected to by any OPC-UA client.
 Uses asyncua library to create server with proper node structure.
+
+Security Features (OPC UA 10101 compliant):
+- Basic256Sha256 encryption
+- Certificate-based authentication
+- Username/password authentication
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 
 from asyncua import Server, ua
 from asyncua.common.node import Node
 
 from ot_simulator.sensor_models import IndustryType, SensorSimulator, get_industry_sensors
+from ot_simulator.opcua_security import (
+    OPCUASecurityConfig,
+    OPCUASecurityManager,
+    create_security_config_from_dict,
+)
 
 logger = logging.getLogger("ot_simulator.opcua")
 
@@ -31,11 +42,16 @@ class OPCUASimulator:
             self.endpoint = config.endpoint
             self.name = config.server_name
             self.industries = config.industries or list(IndustryType)
+            # Extract security configuration
+            security_config_dict = getattr(config, "security", {})
+            self.security_config = create_security_config_from_dict(security_config_dict)
         else:
             # Legacy support: config is actually endpoint string
             self.endpoint = config
             self.name = "OT Data Simulator"
             self.industries = list(IndustryType)
+            self.security_config = OPCUASecurityConfig()  # Default: no security
+
         self.server: Server | None = None
         self.simulators: dict[str, SensorSimulator] = {}
         self.nodes: dict[str, Node] = {}
@@ -44,10 +60,18 @@ class OPCUASimulator:
         self._initialized = False  # Track if init() completed successfully
         self.simulator_manager = simulator_manager  # Reference to SimulatorManager for PLC access
 
+        # Initialize security manager
+        self.security_manager = OPCUASecurityManager(self.security_config)
+
     async def init(self):
         """Initialize OPC-UA server with PLC-based hierarchical structure."""
         try:
             logger.info("Creating OPC-UA Server instance...")
+
+            # Validate security configuration
+            if not self.security_manager.validate_configuration():
+                raise ValueError("Invalid security configuration")
+
             self.server = Server()
             await self.server.init()
             logger.info("OPC-UA Server instance created")
@@ -55,8 +79,26 @@ class OPCUASimulator:
             self.server.set_endpoint(self.endpoint)
             self.server.set_server_name(self.name)
 
-            # Set security policy
-            self.server.set_security_policy([ua.SecurityPolicyType.NoSecurity])
+            # Configure security
+            security_policies = self.security_manager.get_security_policies()
+            self.server.set_security_policy(security_policies)
+
+            # Set certificate and private key if security is enabled
+            if self.security_config.enabled:
+                cert_path = self.security_manager.get_certificate_path()
+                key_path = self.security_manager.get_private_key_path()
+
+                if cert_path and key_path:
+                    await self.server.load_certificate(cert_path)
+                    await self.server.load_private_key(key_path)
+                    logger.info("✓ Loaded server certificate and private key")
+
+            # Set user manager if username/password auth is enabled
+            if self.security_config.enable_user_auth and self.security_manager.user_manager:
+                self.server.set_user_manager(self.security_manager.user_manager)
+                logger.info(f"✓ Enabled username/password authentication ({len(self.security_config.users)} users)")
+            else:
+                logger.info("Username/password authentication disabled (anonymous access allowed)")
 
             # Setup namespace
             uri = "http://databricks.com/iot-simulator"
