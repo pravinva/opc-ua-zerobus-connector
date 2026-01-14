@@ -11,6 +11,7 @@ from aiohttp import web
 
 from ot_simulator.web_ui.api_handlers import APIHandlers
 from ot_simulator.web_ui.opcua_browser import OPCUABrowser
+from ot_simulator.web_ui.wot_browser import handle_wot_browser
 from ot_simulator.web_ui.templates import get_main_page_html
 
 if TYPE_CHECKING:
@@ -50,6 +51,8 @@ class EnhancedWebUI:
         self.app.router.add_get("/api/opcua/hierarchy", self.opcua_browser.handle_opcua_hierarchy)
         # OPC-UA Thing Description endpoint
         self.app.router.add_get("/api/opcua/thing-description", self.api_handlers.handle_opcua_thing_description)
+        # W3C WoT Thing Description Browser
+        self.app.router.add_get("/wot/browser", handle_wot_browser)
         # Zero-Bus configuration endpoints
         self.app.router.add_post("/api/zerobus/config/load", self.api_handlers.handle_zerobus_config_load)
         self.app.router.add_post("/api/zerobus/config", self.api_handlers.handle_zerobus_config_save)

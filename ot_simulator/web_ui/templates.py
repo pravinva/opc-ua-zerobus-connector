@@ -1531,10 +1531,15 @@ def get_body_html() -> str:
         <div class="header">
             <div class="logo-section">
                 <div class="databricks-logo">D</div>
-                <div>
+                <div style="flex: 1;">
                     <h1>OT Data Simulator</h1>
                     <div class="subtitle">Professional Edition with Real-Time Visualization & AI Operations Assistant</div>
                 </div>
+                <a href="/wot/browser" style="padding: 12px 24px; background: linear-gradient(135deg, #00A9E0 0%, #0080B3 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 169, 224, 0.3); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0, 169, 224, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0, 169, 224, 0.3)'">
+                    <span style="font-size: 18px;">🌐</span>
+                    <span>WoT Browser</span>
+                    <span style="font-size: 10px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 12px;">379 sensors</span>
+                </a>
             </div>
         </div>
 
