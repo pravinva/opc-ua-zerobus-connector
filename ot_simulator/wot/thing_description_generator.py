@@ -87,11 +87,10 @@ class ThingDescriptionGenerator:
         """
         try:
             # Try to get from simulator manager if available
-            if hasattr(self.simulator_manager, "get_all_sensors"):
-                sensors = self.simulator_manager.get_all_sensors()
-                return len(sensors)
-            elif hasattr(self.simulator_manager, "sensors"):
-                return sum(len(sims) for sims in self.simulator_manager.sensors.values())
+            if hasattr(self.simulator_manager, "sensor_instances"):
+                return len(self.simulator_manager.sensor_instances)
+            elif hasattr(self.simulator_manager, "get_all_sensor_paths"):
+                return len(self.simulator_manager.get_all_sensor_paths())
         except:
             pass
 
@@ -129,26 +128,33 @@ class ThingDescriptionGenerator:
         sensors = []
 
         try:
-            # Try to access simulator manager's sensor structure
-            if hasattr(self.simulator_manager, "sensors"):
-                for industry, simulators in self.simulator_manager.sensors.items():
-                    for sim in simulators:
-                        sensor_info = {
-                            "name": sim.config.name,
-                            "industry": industry.value if hasattr(industry, "value") else str(industry),
-                            "sensor_type": sim.config.sensor_type.value if hasattr(sim.config.sensor_type, "value") else str(sim.config.sensor_type),
-                            "unit": sim.config.unit,
-                            "min_value": sim.config.min_value,
-                            "max_value": sim.config.max_value,
-                            "nominal_value": sim.config.nominal_value,
-                        }
+            # Access simulator manager's sensor_instances dict (path -> Sensor)
+            if hasattr(self.simulator_manager, "sensor_instances"):
+                for sensor_path, sensor_sim in self.simulator_manager.sensor_instances.items():
+                    # Parse industry/sensor_name from path (e.g., "mining/crusher_1_motor_temperature")
+                    parts = sensor_path.split("/", 1)
+                    industry = parts[0] if len(parts) > 0 else "unknown"
+                    sensor_name = parts[1] if len(parts) > 1 else sensor_path
 
-                        # Apply filter if provided
-                        if node_filter is None or any(f in sensor_info["name"] or f in sensor_info["industry"] for f in node_filter):
-                            sensors.append(sensor_info)
+                    sensor_info = {
+                        "name": sensor_name,
+                        "path": sensor_path,
+                        "industry": industry,
+                        "sensor_type": sensor_sim.config.sensor_type.value if hasattr(sensor_sim.config.sensor_type, "value") else str(sensor_sim.config.sensor_type),
+                        "unit": sensor_sim.config.unit,
+                        "min_value": sensor_sim.config.min_value,
+                        "max_value": sensor_sim.config.max_value,
+                        "nominal_value": sensor_sim.config.nominal_value,
+                    }
+
+                    # Apply filter if provided
+                    if node_filter is None or any(f in sensor_info["name"] or f in sensor_info["industry"] or f in sensor_info["path"] for f in node_filter):
+                        sensors.append(sensor_info)
 
         except Exception as e:
+            import traceback
             print(f"Warning: Could not access simulator sensors: {e}")
+            print(traceback.format_exc())
 
         return sensors
 
