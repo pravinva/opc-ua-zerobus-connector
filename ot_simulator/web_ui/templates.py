@@ -453,10 +453,9 @@ def get_styles_html() -> str:
             height: 300px;
         }
 
-        /* FFT Chart Buttons */
-        .btn-fft {
+        /* Advanced Visualization Buttons */
+        .btn-fft, .btn-spectrogram, .btn-spc {
             padding: 6px 12px;
-            background: #00A9E0;
             color: white;
             border: none;
             border-radius: 4px;
@@ -467,12 +466,42 @@ def get_styles_html() -> str:
             margin-left: 8px;
         }
 
+        .btn-fft {
+            background: #00A9E0;
+        }
+
         .btn-fft:hover {
             background: #0088B8;
             transform: translateY(-1px);
         }
 
         .btn-fft.active {
+            background: #FF3621;
+        }
+
+        .btn-spectrogram {
+            background: #8B5CF6;
+        }
+
+        .btn-spectrogram:hover {
+            background: #7C3AED;
+            transform: translateY(-1px);
+        }
+
+        .btn-spectrogram.active {
+            background: #FF3621;
+        }
+
+        .btn-spc {
+            background: #059669;
+        }
+
+        .btn-spc:hover {
+            background: #047857;
+            transform: translateY(-1px);
+        }
+
+        .btn-spc.active {
             background: #FF3621;
         }
 
@@ -2107,21 +2136,48 @@ def get_scripts_html() -> str:
             if (!charts[sensorPath]) return;
 
             const chart = charts[sensorPath];
-            const state = fftStates[sensorPath];
+            const fftState = fftStates[sensorPath];
+            const spectrogramState = spectrogramStates[sensorPath];
+            const spcState = spcStates[sensorPath];
 
             // If in FFT mode, add to data buffer
-            if (state && state.isFFT) {
-                if (!state.dataBuffer) {
-                    state.dataBuffer = [];
+            if (fftState && fftState.isFFT) {
+                if (!fftState.dataBuffer) {
+                    fftState.dataBuffer = [];
                 }
-                state.dataBuffer.push(value);
+                fftState.dataBuffer.push(value);
 
                 // Keep only last 512 samples for FFT
-                if (state.dataBuffer.length > 512) {
-                    state.dataBuffer.shift();
+                if (fftState.dataBuffer.length > 512) {
+                    fftState.dataBuffer.shift();
                 }
-            } else {
-                // Time-domain chart update
+            }
+            // If in Spectrogram mode, add to data buffer
+            else if (spectrogramState && spectrogramState.isSpectrogram) {
+                if (!spectrogramState.dataBuffer) {
+                    spectrogramState.dataBuffer = [];
+                }
+                spectrogramState.dataBuffer.push(value);
+
+                // Keep only last 512 samples for spectrogram FFT
+                if (spectrogramState.dataBuffer.length > 512) {
+                    spectrogramState.dataBuffer.shift();
+                }
+            }
+            // If in SPC mode, add to data buffer
+            else if (spcState && spcState.isSPC) {
+                if (!spcState.dataBuffer) {
+                    spcState.dataBuffer = [];
+                }
+                spcState.dataBuffer.push(value);
+
+                // Keep only last 100 samples for SPC (manageable control chart)
+                if (spcState.dataBuffer.length > 100) {
+                    spcState.dataBuffer.shift();
+                }
+            }
+            // Time-domain chart update (default mode)
+            else {
                 const date = new Date(timestamp * 1000);
 
                 chart.data.labels.push(date);
@@ -2136,7 +2192,7 @@ def get_scripts_html() -> str:
                 chart.update('none'); // Update without animation for real-time
             }
 
-            // Update live value display (works for both modes)
+            // Update live value display (works for all modes)
             const valueDisplay = document.getElementById(`value-${sensorPath.replace(/\\//g, '-')}`);
             if (valueDisplay) {
                 valueDisplay.textContent = value.toFixed(2);
@@ -2160,6 +2216,14 @@ def get_scripts_html() -> str:
                 ? `<button class="btn-fft" onclick="toggleFFT('${sensorPath}')">FFT</button>`
                 : '';
 
+            // Add Spectrogram button for vibration sensors
+            const spectrogramButtonHTML = isVibration
+                ? `<button class="btn-spectrogram" onclick="toggleSpectrogram('${sensorPath}')">Spectrogram</button>`
+                : '';
+
+            // Add SPC button for all sensors
+            const spcButtonHTML = `<button class="btn-spc" onclick="toggleSPC('${sensorPath}')">SPC</button>`;
+
             const chartHtml = `
                 <div class="chart-card" id="card-${sensorPath.replace(/\\//g, '-')}">
                     <div class="chart-header">
@@ -2172,6 +2236,8 @@ def get_scripts_html() -> str:
                         </div>
                         <div class="chart-buttons">
                             ${fftButtonHTML}
+                            ${spectrogramButtonHTML}
+                            ${spcButtonHTML}
                             <button class="btn btn-stop" onclick="removeChart('${sensorPath}')">×</button>
                         </div>
                     </div>
@@ -2297,6 +2363,20 @@ def get_scripts_html() -> str:
                 clearInterval(fftStates[sensorPath].updateInterval);
                 fftStates[sensorPath].updateInterval = null;
                 // Don't delete fftStates - keep it for toggle back to FFT mode
+            }
+
+            // Clear Spectrogram update interval if exists (but keep spectrogramStates for toggle)
+            if (spectrogramStates[sensorPath] && spectrogramStates[sensorPath].updateInterval) {
+                clearInterval(spectrogramStates[sensorPath].updateInterval);
+                spectrogramStates[sensorPath].updateInterval = null;
+                // Don't delete spectrogramStates - keep it for toggle back
+            }
+
+            // Clear SPC update interval if exists (but keep spcStates for toggle)
+            if (spcStates[sensorPath] && spcStates[sensorPath].updateInterval) {
+                clearInterval(spcStates[sensorPath].updateInterval);
+                spcStates[sensorPath].updateInterval = null;
+                // Don't delete spcStates - keep it for toggle back
             }
 
             // Remove chart
@@ -2939,6 +3019,693 @@ def get_scripts_html() -> str:
                 return y;
             }
         }
+
+        // ========================================
+        // SPECTROGRAM (Time-Frequency Heatmap)
+        // ========================================
+        const spectrogramStates = {}; // Track spectrogram state per sensor
+
+        function toggleSpectrogram(sensorPath) {
+            const chart = charts[sensorPath];
+            if (!chart) return;
+
+            const button = document.querySelector(`[onclick="toggleSpectrogram('${sensorPath}')"]`);
+            const isSpectrogramMode = spectrogramStates[sensorPath]?.isSpectrogram || false;
+
+            if (isSpectrogramMode) {
+                // Switch back to time domain
+                spectrogramStates[sensorPath].isSpectrogram = false;
+                button.classList.remove('active');
+                button.textContent = 'Spectrogram';
+
+                // Recreate as time-domain chart
+                const cardId = `card-${sensorPath.replace(/\//g, '-')}`;
+                const card = document.getElementById(cardId);
+                if (card && spectrogramStates[sensorPath].sensorInfo) {
+                    removeChart(sensorPath);
+                    createChart(sensorPath, spectrogramStates[sensorPath].sensorInfo);
+                }
+            } else {
+                // Switch to spectrogram mode
+                spectrogramStates[sensorPath] = {
+                    isSpectrogram: true,
+                    sensorInfo: chart.options.sensorInfo,
+                    dataBuffer: [],
+                    spectrogramData: [], // Array of FFT results over time
+                    maxSpectrogramRows: 60 // Keep last 60 FFT computations (30 seconds @ 500ms)
+                };
+                button.classList.add('active');
+                button.textContent = 'Time';
+
+                createSpectrogramChart(sensorPath, chart);
+            }
+        }
+
+        function createSpectrogramChart(sensorPath, timeChart) {
+            const chartId = `chart-${sensorPath.replace(/\//g, '-')}`;
+
+            // Destroy existing time-domain chart
+            timeChart.destroy();
+
+            // Create spectrogram heatmap using Chart.js matrix plugin (if available)
+            // For now, we'll use a simplified approach with horizontal bars representing time slices
+            const ctx = document.getElementById(chartId);
+            const spectrogramChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [], // Time labels
+                    datasets: [] // Will be dynamically created for each frequency bin
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: {
+                            type: 'category',
+                            title: {
+                                display: true,
+                                text: 'Time (seconds ago)',
+                                color: '#fff'
+                            },
+                            ticks: {
+                                color: '#9CA3AF',
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 10
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'Frequency (Hz)',
+                                color: '#fff'
+                            },
+                            ticks: {
+                                color: '#9CA3AF'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Frequency: ${context.label} Hz, Magnitude: ${context.parsed.y.toFixed(4)} g`;
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: {
+                                info: {
+                                    type: 'label',
+                                    xValue: 0,
+                                    yValue: 0.8,
+                                    content: ['Spectrogram: Time-Frequency Evolution', 'Darker = Higher Amplitude'],
+                                    color: '#9CA3AF',
+                                    font: {
+                                        size: 10
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    sensorInfo: timeChart.options.sensorInfo // Preserve for toggle
+                }
+            });
+
+            charts[sensorPath] = spectrogramChart;
+            startSpectrogramUpdates(sensorPath);
+        }
+
+        function startSpectrogramUpdates(sensorPath) {
+            const state = spectrogramStates[sensorPath];
+            if (!state) return;
+
+            // Initialize data buffer
+            if (!state.dataBuffer) {
+                state.dataBuffer = [];
+            }
+
+            // Update every 500ms
+            state.updateInterval = setInterval(() => {
+                computeAndUpdateSpectrogram(sensorPath);
+            }, 500);
+        }
+
+        function computeAndUpdateSpectrogram(sensorPath) {
+            const chart = charts[sensorPath];
+            const state = spectrogramStates[sensorPath];
+
+            if (!chart || !state || !state.dataBuffer || state.dataBuffer.length < 8) {
+                return;
+            }
+
+            const bufferSize = Math.min(64, Math.pow(2, Math.floor(Math.log2(state.dataBuffer.length))));
+            const samples = state.dataBuffer.slice(-bufferSize);
+
+            // Compute FFT
+            const real = new Array(bufferSize);
+            const imag = new Array(bufferSize);
+
+            // Apply Hanning window
+            for (let i = 0; i < bufferSize; i++) {
+                const window = 0.5 * (1 - Math.cos(2 * Math.PI * i / (bufferSize - 1)));
+                real[i] = samples[i] * window;
+                imag[i] = 0;
+            }
+
+            const fft = new FFTNayuki(bufferSize);
+            fft.transform(real, imag);
+
+            // Compute magnitudes for first half (positive frequencies)
+            const freqBins = [];
+            const magnitudes = [];
+            const sampleRate = 2; // 2 Hz (500ms updates)
+            const numBins = bufferSize / 2;
+
+            for (let i = 0; i < numBins; i++) {
+                const freq = (i * sampleRate) / bufferSize;
+                const magnitude = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]) / bufferSize;
+                freqBins.push(freq.toFixed(3));
+                magnitudes.push(magnitude);
+            }
+
+            // Add this FFT result to spectrogram history
+            state.spectrogramData.push({
+                timestamp: Date.now(),
+                freqBins: freqBins,
+                magnitudes: magnitudes
+            });
+
+            // Keep only last maxSpectrogramRows
+            if (state.spectrogramData.length > state.maxSpectrogramRows) {
+                state.spectrogramData.shift();
+            }
+
+            // Update chart: Create a heatmap-style visualization
+            // We'll use stacked horizontal bars with color intensity based on magnitude
+            updateSpectrogramChart(chart, state);
+        }
+
+        function updateSpectrogramChart(chart, state) {
+            if (state.spectrogramData.length === 0) return;
+
+            // Get the most recent FFT result
+            const latestFFT = state.spectrogramData[state.spectrogramData.length - 1];
+
+            // Create scatter plot with bubbles sized by magnitude
+            const scatterData = [];
+            const now = Date.now();
+
+            state.spectrogramData.forEach((fftResult, timeIndex) => {
+                const secondsAgo = ((now - fftResult.timestamp) / 1000).toFixed(1);
+
+                fftResult.magnitudes.forEach((magnitude, freqIndex) => {
+                    if (magnitude > 0.0001) { // Filter out noise
+                        scatterData.push({
+                            x: secondsAgo,
+                            y: parseFloat(fftResult.freqBins[freqIndex]),
+                            r: Math.min(10, Math.max(2, magnitude * 1000)) // Bubble size
+                        });
+                    }
+                });
+            });
+
+            // Update chart with bubble data
+            chart.data.datasets = [{
+                type: 'bubble',
+                label: 'Magnitude',
+                data: scatterData,
+                backgroundColor: 'rgba(139, 92, 246, 0.6)',
+                borderColor: 'rgba(139, 92, 246, 0.9)'
+            }];
+
+            // Update time labels
+            const timeLabels = state.spectrogramData.map((fft, i) => {
+                const secondsAgo = ((now - fft.timestamp) / 1000).toFixed(1);
+                return secondsAgo;
+            });
+
+            chart.data.labels = latestFFT.freqBins; // Use frequency bins as labels
+            chart.update('none');
+        }
+
+        // ========================================
+        // SPC CHARTS (Statistical Process Control)
+        // ========================================
+        const spcStates = {}; // Track SPC state per sensor
+
+        function toggleSPC(sensorPath) {
+            const chart = charts[sensorPath];
+            if (!chart) return;
+
+            const button = document.querySelector(`[onclick="toggleSPC('${sensorPath}')"]`);
+            const isSPCMode = spcStates[sensorPath]?.isSPC || false;
+
+            if (isSPCMode) {
+                // Switch back to time domain
+                spcStates[sensorPath].isSPC = false;
+                button.classList.remove('active');
+                button.textContent = 'SPC';
+
+                // Recreate as time-domain chart
+                const cardId = `card-${sensorPath.replace(/\//g, '-')}`;
+                const card = document.getElementById(cardId);
+                if (card && spcStates[sensorPath].sensorInfo) {
+                    removeChart(sensorPath);
+                    createChart(sensorPath, spcStates[sensorPath].sensorInfo);
+                }
+            } else {
+                // Switch to SPC mode
+                spcStates[sensorPath] = {
+                    isSPC: true,
+                    sensorInfo: chart.options.sensorInfo,
+                    dataBuffer: [],
+                    mean: null,
+                    stdDev: null,
+                    ucl: null, // Upper Control Limit (+3σ)
+                    lcl: null, // Lower Control Limit (-3σ)
+                    uwl: null, // Upper Warning Limit (+2σ)
+                    lwl: null  // Lower Warning Limit (-2σ)
+                };
+                button.classList.add('active');
+                button.textContent = 'Time';
+
+                createSPCChart(sensorPath, chart);
+            }
+        }
+
+        function createSPCChart(sensorPath, timeChart) {
+            const chartId = `chart-${sensorPath.replace(/\//g, '-')}`;
+
+            // Destroy existing time-domain chart
+            timeChart.destroy();
+
+            // Create SPC chart with control limits
+            const ctx = document.getElementById(chartId);
+            const spcChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Value',
+                            data: [],
+                            borderColor: '#00A9E0',
+                            backgroundColor: 'rgba(0, 169, 224, 0.1)',
+                            pointBackgroundColor: '#00A9E0',
+                            pointRadius: 4,
+                            tension: 0.1,
+                            order: 1
+                        },
+                        {
+                            label: 'Mean',
+                            data: [],
+                            borderColor: '#059669',
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            order: 2
+                        },
+                        {
+                            label: 'UCL (+3σ)',
+                            data: [],
+                            borderColor: '#EF4444',
+                            borderDash: [10, 5],
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            order: 3
+                        },
+                        {
+                            label: 'LCL (-3σ)',
+                            data: [],
+                            borderColor: '#EF4444',
+                            borderDash: [10, 5],
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            order: 4
+                        },
+                        {
+                            label: 'UWL (+2σ)',
+                            data: [],
+                            borderColor: '#F59E0B',
+                            borderDash: [5, 3],
+                            pointRadius: 0,
+                            borderWidth: 1,
+                            order: 5
+                        },
+                        {
+                            label: 'LWL (-2σ)',
+                            data: [],
+                            borderColor: '#F59E0B',
+                            borderDash: [5, 3],
+                            pointRadius: 0,
+                            borderWidth: 1,
+                            order: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: {
+                            type: 'category',
+                            title: {
+                                display: true,
+                                text: 'Sample Number',
+                                color: '#fff'
+                            },
+                            ticks: {
+                                color: '#9CA3AF',
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 15
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: `Value (${timeChart.data.datasets[0].label})`,
+                                color: '#fff'
+                            },
+                            ticks: {
+                                color: '#9CA3AF'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#9CA3AF',
+                                font: {
+                                    size: 10
+                                },
+                                filter: function(item) {
+                                    return !item.text.includes('Warning'); // Hide warning limits from legend
+                                }
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.label === 'Value') {
+                                        return `Value: ${context.parsed.y.toFixed(2)}`;
+                                    }
+                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    sensorInfo: timeChart.options.sensorInfo // Preserve for toggle
+                }
+            });
+
+            charts[sensorPath] = spcChart;
+            startSPCUpdates(sensorPath);
+        }
+
+        function startSPCUpdates(sensorPath) {
+            const state = spcStates[sensorPath];
+            if (!state) return;
+
+            // Initialize data buffer
+            if (!state.dataBuffer) {
+                state.dataBuffer = [];
+            }
+
+            // Update every 500ms
+            state.updateInterval = setInterval(() => {
+                updateSPCChart(sensorPath);
+            }, 500);
+        }
+
+        function updateSPCChart(sensorPath) {
+            const chart = charts[sensorPath];
+            const state = spcStates[sensorPath];
+
+            if (!chart || !state) return;
+
+            // Get latest data from buffer
+            if (!state.dataBuffer || state.dataBuffer.length < 20) {
+                // Need at least 20 samples to compute meaningful statistics
+                return;
+            }
+
+            // Compute statistics (mean and standard deviation)
+            const n = state.dataBuffer.length;
+            state.mean = state.dataBuffer.reduce((sum, val) => sum + val, 0) / n;
+
+            const squaredDiffs = state.dataBuffer.map(val => Math.pow(val - state.mean, 2));
+            state.stdDev = Math.sqrt(squaredDiffs.reduce((sum, val) => sum + val, 0) / n);
+
+            // Compute control limits
+            state.ucl = state.mean + (3 * state.stdDev); // Upper Control Limit
+            state.lcl = state.mean - (3 * state.stdDev); // Lower Control Limit
+            state.uwl = state.mean + (2 * state.stdDev); // Upper Warning Limit
+            state.lwl = state.mean - (2 * state.stdDev); // Lower Warning Limit
+
+            // Update chart datasets
+            const labels = state.dataBuffer.map((_, i) => i + 1);
+            const meanLine = state.dataBuffer.map(_ => state.mean);
+            const uclLine = state.dataBuffer.map(_ => state.ucl);
+            const lclLine = state.dataBuffer.map(_ => state.lcl);
+            const uwlLine = state.dataBuffer.map(_ => state.uwl);
+            const lwlLine = state.dataBuffer.map(_ => state.lwl);
+
+            // Color points based on control limits
+            const pointColors = state.dataBuffer.map(val => {
+                if (val > state.ucl || val < state.lcl) {
+                    return '#EF4444'; // Red: Out of control
+                } else if (val > state.uwl || val < state.lwl) {
+                    return '#F59E0B'; // Yellow: Warning
+                } else {
+                    return '#00A9E0'; // Blue: In control
+                }
+            });
+
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = state.dataBuffer;
+            chart.data.datasets[0].pointBackgroundColor = pointColors;
+            chart.data.datasets[1].data = meanLine;
+            chart.data.datasets[2].data = uclLine;
+            chart.data.datasets[3].data = lclLine;
+            chart.data.datasets[4].data = uwlLine;
+            chart.data.datasets[5].data = lwlLine;
+
+            chart.update('none');
+        }
+
+        // ========================================
+        // CORRELATION HEATMAP MATRIX
+        // ========================================
+        let correlationHeatmapVisible = false;
+
+        function createCorrelationHeatmap() {
+            if (correlationHeatmapVisible) {
+                // Hide existing heatmap
+                const existingCard = document.getElementById('correlation-heatmap-card');
+                if (existingCard) {
+                    existingCard.remove();
+                    correlationHeatmapVisible = false;
+                }
+                return;
+            }
+
+            // Get all active sensors
+            const activeSensors = Object.keys(charts);
+            if (activeSensors.length < 2) {
+                alert('Please create at least 2 charts to see correlation heatmap');
+                return;
+            }
+
+            // Create correlation matrix
+            const correlationMatrix = {};
+            activeSensors.forEach(sensor1 => {
+                correlationMatrix[sensor1] = {};
+                activeSensors.forEach(sensor2 => {
+                    if (sensor1 === sensor2) {
+                        correlationMatrix[sensor1][sensor2] = 1.0;
+                    } else {
+                        // Compute Pearson correlation
+                        const chart1 = charts[sensor1];
+                        const chart2 = charts[sensor2];
+                        if (chart1.data.datasets[0].data.length > 1 && chart2.data.datasets[0].data.length > 1) {
+                            const r = pearsonCorrelation(
+                                chart1.data.datasets[0].data,
+                                chart2.data.datasets[0].data
+                            );
+                            correlationMatrix[sensor1][sensor2] = r;
+                        } else {
+                            correlationMatrix[sensor1][sensor2] = 0;
+                        }
+                    }
+                });
+            });
+
+            // Create heatmap visualization
+            const chartHtml = `
+                <div class="chart-card" id="correlation-heatmap-card" style="grid-column: 1 / -1; min-height: ${activeSensors.length * 40 + 200}px;">
+                    <div class="chart-header">
+                        <div class="chart-title">Correlation Heatmap Matrix</div>
+                        <button class="btn btn-stop" onclick="createCorrelationHeatmap()">×</button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="correlation-heatmap-chart"></canvas>
+                    </div>
+                    <div style="padding: 12px; font-size: 11px; color: #9CA3AF; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <strong>Interpretation:</strong>
+                        <span style="color: #EF4444;">Red (1.0)</span> = Perfect positive correlation,
+                        <span style="color: #F59E0B;">Yellow (0.5)</span> = Moderate correlation,
+                        <span style="color: #6B7280;">Gray (0.0)</span> = No correlation,
+                        <span style="color: #3B82F6;">Blue (-1.0)</span> = Perfect negative correlation
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('chart-section').insertAdjacentHTML('beforeend', chartHtml);
+
+            // Create matrix visualization using Chart.js
+            const ctx = document.getElementById('correlation-heatmap-chart');
+
+            // Prepare matrix data for visualization
+            const matrixData = [];
+            activeSensors.forEach((sensor1, i) => {
+                activeSensors.forEach((sensor2, j) => {
+                    const correlation = correlationMatrix[sensor1][sensor2];
+                    matrixData.push({
+                        x: j,
+                        y: i,
+                        v: correlation
+                    });
+                });
+            });
+
+            new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Correlation',
+                        data: matrixData.map(d => ({
+                            x: d.x,
+                            y: d.y,
+                            r: 20
+                        })),
+                        backgroundColor: matrixData.map(d => {
+                            // Color scale: Blue (-1) -> Gray (0) -> Red (+1)
+                            const val = d.v;
+                            if (val > 0) {
+                                const intensity = Math.floor(val * 255);
+                                return `rgba(239, 68, 68, ${val})`;
+                            } else if (val < 0) {
+                                const intensity = Math.floor(Math.abs(val) * 255);
+                                return `rgba(59, 130, 246, ${Math.abs(val)})`;
+                            } else {
+                                return 'rgba(107, 114, 128, 0.5)';
+                            }
+                        }),
+                        pointStyle: 'rect'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            min: -0.5,
+                            max: activeSensors.length - 0.5,
+                            ticks: {
+                                color: '#9CA3AF',
+                                callback: function(value) {
+                                    return activeSensors[Math.round(value)]?.split('/').pop() || '';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            reverse: true,
+                            min: -0.5,
+                            max: activeSensors.length - 0.5,
+                            ticks: {
+                                color: '#9CA3AF',
+                                callback: function(value) {
+                                    return activeSensors[Math.round(value)]?.split('/').pop() || '';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                label: function(context) {
+                                    const i = Math.round(context.parsed.y);
+                                    const j = Math.round(context.parsed.x);
+                                    const correlation = correlationMatrix[activeSensors[i]][activeSensors[j]];
+                                    return [
+                                        `${activeSensors[i]}`,
+                                        `vs`,
+                                        `${activeSensors[j]}`,
+                                        `r = ${correlation.toFixed(3)}`
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            correlationHeatmapVisible = true;
+        }
+
+        // Add button to navigation for correlation heatmap
+        function addCorrelationHeatmapButton() {
+            const overlayButton = document.querySelector('button[onclick*="createOverlayChart"]');
+            if (overlayButton && !document.getElementById('correlation-heatmap-btn')) {
+                const heatmapButton = document.createElement('button');
+                heatmapButton.id = 'correlation-heatmap-btn';
+                heatmapButton.className = 'btn-primary';
+                heatmapButton.textContent = 'Correlation Heatmap';
+                heatmapButton.style.marginLeft = '12px';
+                heatmapButton.onclick = createCorrelationHeatmap;
+                overlayButton.parentElement.appendChild(heatmapButton);
+            }
+        }
+
+        // Call this when overlay button is shown
+        setTimeout(addCorrelationHeatmapButton, 1000);
 
         // Zero-Bus Configuration Functions
         function toggleConfig(protocol) {
