@@ -65,7 +65,12 @@ class MQTTSimulator:
         )
 
     async def start(self):
-        """Start publishing sensor data to MQTT broker."""
+        """Start publishing sensor data to MQTT broker.
+
+        If broker connection fails, runs in headless mode where sensors are
+        initialized but no publishing occurs. This allows Zero-Bus streaming
+        to access sensor data without requiring an MQTT broker.
+        """
         if not self.simulators:
             await self.init()
 
@@ -101,43 +106,58 @@ class MQTTSimulator:
             tls_params=tls_params,
         )
 
-        async with self.client:
-            logger.info(f"MQTT client connected to {broker_host}:{broker_port}")
+        try:
+            async with self.client:
+                logger.info(f"MQTT client connected to {broker_host}:{broker_port}")
+                self._running = True
+
+                try:
+                    # Calculate publish interval
+                    publish_interval = 1.0 / self.config.publish_rate_hz
+
+                    while self._running:
+                        start_time = time.time()
+
+                        if self.config.batch_publish:
+                            # Publish all sensors at once
+                            await self._publish_batch()
+                        else:
+                            # Publish sensors individually
+                            for path, simulator in self.simulators.items():
+                                await self._publish_sensor(path, simulator)
+
+                        self._message_count += len(self.simulators)
+
+                        # Log stats periodically
+                        if self._message_count % 1000 == 0:
+                            logger.info(f"Published {self._message_count} messages")
+
+                        # Sleep for remaining time to maintain rate
+                        elapsed = time.time() - start_time
+                        sleep_time = max(0, publish_interval - elapsed)
+                        if sleep_time > 0:
+                            await asyncio.sleep(sleep_time)
+
+                except asyncio.CancelledError:
+                    logger.info("MQTT publisher stopping...")
+                    self._running = False
+                except Exception as e:
+                    logger.exception(f"Error in MQTT publisher: {e}")
+                    raise
+        except Exception as broker_error:
+            # Broker connection failed - run in headless mode
+            logger.warning(f"MQTT broker connection failed: {broker_error}")
+            logger.info("Running in headless mode - sensors active but not publishing to broker")
+            logger.info("Zero-Bus streaming will still work by reading sensor data directly")
             self._running = True
 
+            # Keep simulator running without broker connection
             try:
-                # Calculate publish interval
-                publish_interval = 1.0 / self.config.publish_rate_hz
-
                 while self._running:
-                    start_time = time.time()
-
-                    if self.config.batch_publish:
-                        # Publish all sensors at once
-                        await self._publish_batch()
-                    else:
-                        # Publish sensors individually
-                        for path, simulator in self.simulators.items():
-                            await self._publish_sensor(path, simulator)
-
-                    self._message_count += len(self.simulators)
-
-                    # Log stats periodically
-                    if self._message_count % 1000 == 0:
-                        logger.info(f"Published {self._message_count} messages")
-
-                    # Sleep for remaining time to maintain rate
-                    elapsed = time.time() - start_time
-                    sleep_time = max(0, publish_interval - elapsed)
-                    if sleep_time > 0:
-                        await asyncio.sleep(sleep_time)
-
+                    await asyncio.sleep(1)
             except asyncio.CancelledError:
-                logger.info("MQTT publisher stopping...")
+                logger.info("MQTT simulator stopping...")
                 self._running = False
-            except Exception as e:
-                logger.exception(f"Error in MQTT publisher: {e}")
-                raise
 
     async def _ensure_broker_running(self, host: str, port: int):
         """Check if MQTT broker is running and start it if needed."""
