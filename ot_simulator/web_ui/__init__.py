@@ -48,6 +48,8 @@ class EnhancedWebUI:
         self.app.router.add_get("/api/sensors", self.api_handlers.handle_list_sensors)
         self.app.router.add_get("/api/industries", self.api_handlers.handle_list_industries)
         self.app.router.add_get("/api/opcua/hierarchy", self.opcua_browser.handle_opcua_hierarchy)
+        # OPC-UA Thing Description endpoint
+        self.app.router.add_get("/api/opcua/thing-description", self.api_handlers.handle_opcua_thing_description)
         # Zero-Bus configuration endpoints
         self.app.router.add_post("/api/zerobus/config/load", self.api_handlers.handle_zerobus_config_load)
         self.app.router.add_post("/api/zerobus/config", self.api_handlers.handle_zerobus_config_save)

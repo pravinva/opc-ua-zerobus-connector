@@ -1611,3 +1611,36 @@ class APIHandlers:
                     logger.error(f"Error closing stream: {e}")
             self.streaming_active[protocol] = False
             logger.info(f"{protocol.upper()} streaming stopped. Total records: {record_count}")
+
+    async def handle_opcua_thing_description(self, request: web.Request) -> web.Response:
+        """Generate and return W3C WoT Thing Description for OPC-UA server."""
+        try:
+            from ot_simulator.wot import ThingDescriptionGenerator
+
+            # Get OPC-UA endpoint from config
+            opcua_endpoint = getattr(self.config, 'opcua', None)
+            if opcua_endpoint and hasattr(opcua_endpoint, 'endpoint'):
+                base_url = opcua_endpoint.endpoint
+            else:
+                base_url = "opc.tcp://0.0.0.0:4840/ot-simulator/server/"
+
+            # Create TD generator
+            td_generator = ThingDescriptionGenerator(
+                simulator_manager=self.manager,
+                base_url=base_url,
+                namespace_uri="http://databricks.com/iot-simulator"
+            )
+
+            # Generate Thing Description
+            td = await td_generator.generate_td()
+
+            return web.json_response(td, content_type="application/td+json")
+
+        except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
+            logger.error(f"Error generating Thing Description: {error_detail}")
+            return web.json_response({
+                "error": str(e),
+                "detail": error_detail
+            }, status=500)
