@@ -128,7 +128,7 @@ The simulator now includes **5 of 8 priority visualizations** for industrial ML 
 - Priority 7: 3D Equipment View (5-7 days)
 - Priority 8: Waterfall Plot (3-4 days)
 
-**Documentation**: See `docs/VISUALIZATION_STATUS.md` for complete details
+**Documentation**: See `docs/VISUALIZATION_STATUS.md (local only)` for complete details
 
 ---
 
@@ -162,8 +162,8 @@ python -m ot_simulator.llm_agent_operator
 - Configurable via `llm_agent_config.yaml`
 
 **Documentation**:
-- `docs/QUICK_START_NATURAL_LANGUAGE.md` - 5-minute guide
-- `docs/NATURAL_LANGUAGE_OPERATOR_GUIDE.md` - Comprehensive 400+ line guide
+- `docs/QUICK_START_NATURAL_LANGUAGE.md (local only)` - 5-minute guide
+- `docs/NATURAL_LANGUAGE_OPERATOR_GUIDE.md (local only)` - Comprehensive 400+ line guide
 
 ---
 
@@ -258,7 +258,7 @@ openssl req -x509 -newkey rsa:2048 -keyout server_key.pem \
   -subj "/CN=ot-simulator/O=Databricks/C=US"
 ```
 
-**Documentation**: See `docs/SECURITY_IMPLEMENTATION_GUIDE.md`
+**Documentation**: See `docs/guides/SECURITY_IMPLEMENTATION_GUIDE.md`
 
 ---
 
@@ -284,7 +284,7 @@ ngrok tcp 4840
 # Use: opc.tcp://0.tcp.ngrok.io:<port>/ot-simulator/server/
 ```
 
-**Documentation**: See `docs/IGNITION_INTEGRATION_GUIDE.md` for complete setup guide
+**Documentation**: See `docs/guides/IGNITION_INTEGRATION_GUIDE.md` for complete setup guide
 
 ---
 
@@ -385,12 +385,21 @@ opc-ua-zerobus-connector/
 │   ├── config.yaml                # Simulator configuration
 │   └── certs/                     # Security certificates
 │
-├── docs/                          # Documentation
-│   ├── VISUALIZATION_STATUS.md   # Visualization roadmap
-│   ├── SECURITY_IMPLEMENTATION_GUIDE.md
-│   ├── IGNITION_INTEGRATION_GUIDE.md
-│   ├── DEPLOYMENT_GUIDE_DATABRICKS_APPS.md
-│   └── ... (30+ technical guides)
+├── docs/                          # Documentation (organized)
+│   ├── guides/                    # User-facing guides
+│   │   ├── IGNITION_INTEGRATION_GUIDE.md
+│   │   ├── SECURITY_IMPLEMENTATION_GUIDE.md
+│   │   ├── DEPLOYMENT_GUIDE_DATABRICKS_APPS.md
+│   │   └── ... (7 guides)
+│   ├── research/                  # Technical research
+│   │   ├── OPC_UA_10101_WOT_BINDING_RESEARCH.md
+│   │   ├── NODE_WOT_COMPARISON.md
+│   │   └── ... (5 research docs)
+│   ├── designs/                   # Architecture designs
+│   │   ├── DATABRICKS_APPS_SOLUTION.md
+│   │   ├── UNITY_CATALOG_SCHEMAS.md
+│   │   └── ... (3 design docs)
+│   └── *.md (local only)          # Development tracking (gitignored)
 │
 ├── tests/                         # Test files
 │   ├── test_nl_ai_wot_integration.py
@@ -551,7 +560,7 @@ docker run -d --name iot-connector \
 ```bash
 databricks apps deploy ot-simulator --config app.yaml
 ```
-See `docs/DEPLOYMENT_GUIDE_DATABRICKS_APPS.md` for complete guide.
+See `docs/guides/DEPLOYMENT_GUIDE_DATABRICKS_APPS.md` for complete guide.
 
 ### 4. AWS EC2 / Azure VM
 ```bash
@@ -559,7 +568,7 @@ See `docs/DEPLOYMENT_GUIDE_DATABRICKS_APPS.md` for complete guide.
 sudo systemctl enable ot-simulator
 sudo systemctl start ot-simulator
 ```
-See `docs/IGNITION_INTEGRATION_GUIDE.md` for cloud deployment.
+See `docs/guides/IGNITION_INTEGRATION_GUIDE.md` for cloud deployment.
 
 ---
 
@@ -605,22 +614,31 @@ python -m opcua2uc --test-zerobus
 
 ## 📚 Documentation
 
-### Guides
-- **VISUALIZATION_STATUS.md** - Advanced visualization roadmap and status
+All documentation is organized in the `docs/` directory:
+
+### User Guides (`docs/guides/`)
+- **IGNITION_INTEGRATION_GUIDE.md** - Connect Ignition SCADA to OPC UA simulator
 - **SECURITY_IMPLEMENTATION_GUIDE.md** - OPC UA 10101 security setup
-- **IGNITION_INTEGRATION_GUIDE.md** - Connect Ignition SCADA
-- **PROTOCOLS.md** - Protocol configuration and troubleshooting
 - **DEPLOYMENT_GUIDE_DATABRICKS_APPS.md** - Deploy to Databricks Apps
-- **NATURAL_LANGUAGE_OPERATOR_GUIDE.md** - NLP operator usage
+- **QUICK_START_DATABRICKS_APPS.md** - Quick start for Databricks Apps
+- **OPC_UA_CONNECTION_GUIDE.md** - OPC UA connection troubleshooting
+- **OPC_UA_SECURITY_GUIDE.md** - Security configuration guide
+- **NL_AI_WOT_DEMO_GUIDE.md** - Natural language + WoT demo script
 
-### Quick Starts
-- **QUICK_START_NATURAL_LANGUAGE.md** - 5-minute NLP guide
-- **NL_AI_WOT_DEMO_GUIDE.md** - Demo script for NLP + WoT
-
-### Technical
+### Technical Research (`docs/research/`)
+- **OPC_UA_10101_WOT_BINDING_RESEARCH.md** - W3C WoT OPC UA binding research
 - **NODE_WOT_COMPARISON.md** - Comparison with Node-WoT
-- **OPC_UA_10101_WOT_BINDING_RESEARCH.md** - W3C WoT OPC UA binding
-- **FFT_FIXES_APPLIED.md** - FFT visualization implementation details
+- **NODE_WOT_VS_DATABRICKS_IOT_CONNECTOR.md** - Detailed comparison
+- **WHY_NODEJS_VS_PYTHON_FOR_WOT.md** - Technology decision rationale
+- **ZEROBUS_NETWORKING_EXPLAINED.md** - Zerobus architecture
+
+### Architecture & Designs (`docs/designs/`)
+- **DATABRICKS_APPS_SOLUTION.md** - Databricks Apps architecture
+- **MQTT_BROKER_SOLUTION.md** - MQTT broker integration design
+- **UNITY_CATALOG_SCHEMAS.md** - Unity Catalog table schemas
+
+### Development Status (Local Only)
+Status tracking documents are kept locally and excluded from the repository via `.gitignore`. These include implementation summaries, session notes, and work-in-progress tracking documents.
 
 ---
 

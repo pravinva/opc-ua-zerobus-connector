@@ -14,3 +14,20 @@ venv/
 # Security certificates (self-signed for development)
 ot_simulator/certs/*.pem
 ot_simulator/certs/*.key
+
+# Temporary development/tracking documents (keep locally, not in repo)
+docs/CONVERSATION_SUMMARY.md
+docs/DATABRICKS_APPS_DEPLOYMENT.md
+docs/DEPLOYMENT_CHECKLIST.md
+docs/FFT_FIXES_APPLIED.md
+docs/IMPLEMENTATION_PRIORITIES.md
+docs/INCOMPLETE_WORK_INVENTORY.md
+docs/PRIORITY_1_FFT_IMPLEMENTATION.md
+docs/SESSION_SUMMARY_VISUALIZATION_IMPLEMENTATION.md
+docs/VISUALIZATION_IMPROVEMENTS_ANALYSIS.md
+docs/VISUALIZATION_STATUS.md
+docs/WOT_BUG_FIXES_AND_TESTING.md
+docs/WOT_IMPLEMENTATION_FINAL_SUMMARY.md
+docs/WOT_IMPLEMENTATION_REPORT.md
+docs/WOT_IMPLEMENTATION_SUMMARY.md
+docs/WOT_ZEROBUS_INTEGRATION.md
