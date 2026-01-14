@@ -83,23 +83,14 @@ class ThingDescriptionClient:
         if not properties:
             raise ValueError("Thing Description has no properties")
 
-        # Parse first property's form to determine protocol and endpoint
-        first_prop_name = next(iter(properties.keys()))
-        first_prop = properties[first_prop_name]
-        forms = first_prop.get("forms", [])
+        # Detect protocol from base URL (not from relative hrefs)
+        if not base:
+            raise ValueError("Thing Description missing 'base' URL")
 
-        if not forms:
-            raise ValueError(f"Property '{first_prop_name}' has no forms")
+        protocol_type = self._detect_protocol_from_href(base)
 
-        href = forms[0].get("href", "")
-        if not href:
-            raise ValueError(f"Property '{first_prop_name}' form has no href")
-
-        # Detect protocol from href
-        protocol_type = self._detect_protocol_from_href(href)
-
-        # Determine endpoint (prefer base, fallback to href)
-        endpoint = base if base else self._extract_endpoint_from_href(href)
+        # Use base URL as endpoint
+        endpoint = base
 
         # Extract semantic types and unit URIs from properties
         semantic_types: dict[str, str] = {}
