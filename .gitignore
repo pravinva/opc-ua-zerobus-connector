@@ -10,3 +10,6 @@ build/
 .opcua2uc.pid
 ot_simulator.log
 venv/
+# Security certificates (self-signed for development)
+ot_simulator/certs/*.pem
+ot_simulator/certs/*.key

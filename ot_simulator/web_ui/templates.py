@@ -19,7 +19,10 @@ def get_head_html() -> str:
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>"""
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fft.js@4.0.3/lib/fft.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js@2.27.0/dist/plotly.min.js"></script>"""
 
 
 def get_styles_html() -> str:
@@ -450,6 +453,35 @@ def get_styles_html() -> str:
             height: 300px;
         }
 
+        /* FFT Chart Buttons */
+        .btn-fft {
+            padding: 6px 12px;
+            background: #00A9E0;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: 8px;
+        }
+
+        .btn-fft:hover {
+            background: #0088B8;
+            transform: translateY(-1px);
+        }
+
+        .btn-fft.active {
+            background: #FF3621;
+        }
+
+        .chart-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
         /* Natural Language Chat Button */
         .nlp-chat-button {
             position: fixed;
@@ -819,6 +851,16 @@ def get_styles_html() -> str:
             background: #F9FAFB;
             border-left: 3px solid #FF3621;
             padding-left: 13px;
+        }
+
+        .sensor-item.selected {
+            background: #DBEAFE;
+            border-left: 4px solid #00A9E0;
+            padding-left: 12px;
+        }
+
+        .sensor-item.selected:hover {
+            background: #BFDBFE;
         }
 
         .sensor-item:last-child {
@@ -1915,11 +1957,21 @@ def get_body_html() -> str:
 def get_scripts_html() -> str:
     """Return the JavaScript code for the web UI."""
     return """    <script>
+        // Register Chart.js annotation plugin
+        if (typeof Chart !== 'undefined' && typeof chartAnnotation !== 'undefined') {
+            Chart.register(chartAnnotation);
+        }
+
         // WebSocket connection
         let ws = null;
         let reconnectInterval = null;
         const charts = {};
         let conversationHistory = [];
+
+        // Multi-sensor overlay support
+        let selectedSensors = new Set();
+        let overlayCharts = new Map();
+        const CHART_COLORS = ['#00a8e1', '#ff3621', '#10b981', '#fbbf24', '#f97316', '#8b5cf6', '#ec4899', '#06b6d4'];
 
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -2049,23 +2101,42 @@ def get_scripts_html() -> str:
         }
 
         function updateChart(sensorPath, value, timestamp) {
+            // Update overlay charts first
+            updateOverlayChart(sensorPath, value, timestamp);
+
             if (!charts[sensorPath]) return;
 
             const chart = charts[sensorPath];
-            const date = new Date(timestamp * 1000);
+            const state = fftStates[sensorPath];
 
-            chart.data.labels.push(date);
-            chart.data.datasets[0].data.push(value);
+            // If in FFT mode, add to data buffer
+            if (state && state.isFFT) {
+                if (!state.dataBuffer) {
+                    state.dataBuffer = [];
+                }
+                state.dataBuffer.push(value);
 
-            // Keep only last 240 points (2 minutes at 500ms intervals)
-            if (chart.data.labels.length > 240) {
-                chart.data.labels.shift();
-                chart.data.datasets[0].data.shift();
+                // Keep only last 512 samples for FFT
+                if (state.dataBuffer.length > 512) {
+                    state.dataBuffer.shift();
+                }
+            } else {
+                // Time-domain chart update
+                const date = new Date(timestamp * 1000);
+
+                chart.data.labels.push(date);
+                chart.data.datasets[0].data.push(value);
+
+                // Keep only last 240 points (2 minutes at 500ms intervals)
+                if (chart.data.labels.length > 240) {
+                    chart.data.labels.shift();
+                    chart.data.datasets[0].data.shift();
+                }
+
+                chart.update('none'); // Update without animation for real-time
             }
 
-            chart.update('none'); // Update without animation for real-time
-
-            // Update live value display
+            // Update live value display (works for both modes)
             const valueDisplay = document.getElementById(`value-${sensorPath.replace(/\\//g, '-')}`);
             if (valueDisplay) {
                 valueDisplay.textContent = value.toFixed(2);
@@ -2075,12 +2146,18 @@ def get_scripts_html() -> str:
         function createChart(sensorPath, sensorInfo) {
             const chartId = `chart-${sensorPath.replace(/\\//g, '-')}`;
             const valueId = `value-${sensorPath.replace(/\\//g, '-')}`;
+            const isVibration = sensorInfo.type && (sensorInfo.type.toLowerCase().includes('vibration') || sensorInfo.type.toLowerCase().includes('vib'));
 
             // Protocol badges HTML
             const protocolBadgesHTML = sensorInfo.protocols && sensorInfo.protocols.length > 0
                 ? sensorInfo.protocols.map(proto =>
                     `<span class="protocol-badge-mini ${proto}">${proto}</span>`
                 ).join('')
+                : '';
+
+            // Add FFT button for vibration sensors
+            const fftButtonHTML = isVibration
+                ? `<button class="btn-fft" onclick="toggleFFT('${sensorPath}')">FFT</button>`
                 : '';
 
             const chartHtml = `
@@ -2093,7 +2170,10 @@ def get_scripts_html() -> str:
                             </div>
                             <div class="live-value" id="${valueId}">--</div>
                         </div>
-                        <button class="btn btn-stop" onclick="removeChart('${sensorPath}')">×</button>
+                        <div class="chart-buttons">
+                            ${fftButtonHTML}
+                            <button class="btn btn-stop" onclick="removeChart('${sensorPath}')">×</button>
+                        </div>
                     </div>
                     <div class="chart-container">
                         <canvas id="${chartId}"></canvas>
@@ -2186,7 +2266,9 @@ def get_scripts_html() -> str:
                             padding: 12,
                             displayColors: false
                         }
-                    }
+                    },
+                    // Store sensorInfo for FFT toggle
+                    sensorInfo: sensorInfo
                 }
             });
 
@@ -2208,6 +2290,13 @@ def get_scripts_html() -> str:
                     type: 'unsubscribe',
                     sensors: [sensorPath]
                 }));
+            }
+
+            // Clear FFT update interval if exists (but keep fftStates for toggle)
+            if (fftStates[sensorPath] && fftStates[sensorPath].updateInterval) {
+                clearInterval(fftStates[sensorPath].updateInterval);
+                fftStates[sensorPath].updateInterval = null;
+                // Don't delete fftStates - keep it for toggle back to FFT mode
             }
 
             // Remove chart
@@ -2236,6 +2325,618 @@ def get_scripts_html() -> str:
                     type: 'nlp_command',
                     text: `stop ${protocol}`
                 }));
+            }
+        }
+
+        // Multi-Sensor Overlay Functions
+        function toggleSensorSelection(sensorPath, sensorInfo, sensorItem) {
+            if (selectedSensors.has(sensorPath)) {
+                selectedSensors.delete(sensorPath);
+                sensorItem.classList.remove('selected');
+            } else {
+                selectedSensors.add(sensorPath);
+                sensorItem.classList.add('selected');
+                // Store sensor info for later use
+                if (!sensorItem.dataset.sensorInfo) {
+                    sensorItem.dataset.sensorInfo = JSON.stringify(sensorInfo);
+                }
+            }
+
+            // Show/update overlay button
+            updateOverlayButton();
+        }
+
+        function updateOverlayButton() {
+            let overlayBtn = document.getElementById('create-overlay-btn');
+
+            if (selectedSensors.size === 0) {
+                // Remove button if no sensors selected
+                if (overlayBtn) overlayBtn.remove();
+                return;
+            }
+
+            if (!overlayBtn) {
+                // Create button
+                overlayBtn = document.createElement('button');
+                overlayBtn.id = 'create-overlay-btn';
+                overlayBtn.style.cssText = `
+                    position: fixed;
+                    bottom: 24px;
+                    right: 24px;
+                    padding: 16px 24px;
+                    background: linear-gradient(135deg, #00A9E0 0%, #0080B3 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    font-size: 14px;
+                    cursor: pointer;
+                    box-shadow: 0 4px 12px rgba(0, 169, 224, 0.3);
+                    z-index: 1000;
+                    transition: all 0.3s;
+                `;
+                overlayBtn.onmouseover = function() {
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.boxShadow = '0 6px 16px rgba(0, 169, 224, 0.4)';
+                };
+                overlayBtn.onmouseout = function() {
+                    this.style.transform = 'translateY(0)';
+                    this.style.boxShadow = '0 4px 12px rgba(0, 169, 224, 0.3)';
+                };
+                overlayBtn.onclick = createOverlayChart;
+                document.body.appendChild(overlayBtn);
+            }
+
+            overlayBtn.textContent = `Create Overlay Chart (${selectedSensors.size} sensor${selectedSensors.size !== 1 ? 's' : ''})`;
+        }
+
+        function createOverlayChart() {
+            if (selectedSensors.size === 0) return;
+
+            const chartId = 'overlay-' + Date.now();
+            const sensorsArray = Array.from(selectedSensors);
+
+            // Get sensor metadata from DOM
+            const sensorMetadata = sensorsArray.map(path => {
+                const sensorItem = document.querySelector(`[onclick*="${path}"]`);
+                if (sensorItem && sensorItem.dataset.sensorInfo) {
+                    return { path, ...JSON.parse(sensorItem.dataset.sensorInfo) };
+                }
+                // Fallback - extract from path
+                const parts = path.split('/');
+                return {
+                    path,
+                    name: parts[parts.length - 1],
+                    unit: 'unit',
+                    type: 'sensor'
+                };
+            });
+
+            // Group by unit for Y-axis assignment
+            const unitGroups = {};
+            sensorMetadata.forEach(s => {
+                const unit = s.unit || 'unknown';
+                if (!unitGroups[unit]) unitGroups[unit] = [];
+                unitGroups[unit].push(s);
+            });
+
+            // Create chart container
+            const chartSection = document.getElementById('chart-section');
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'card';
+            cardDiv.id = `card-${chartId}`;
+            cardDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="color: #00A9E0; font-size: 18px; font-weight: 600;">Multi-Sensor Overlay (${sensorsArray.length} sensors)</h3>
+                    <div>
+                        <button class="btn btn-stop" onclick="removeOverlayChart('${chartId}')" style="background: #EF4444; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer;">Remove</button>
+                    </div>
+                </div>
+                <div style="position: relative; height: 400px;">
+                    <canvas id="${chartId}"></canvas>
+                </div>
+                <div id="${chartId}-correlation" style="margin-top: 12px; padding: 12px; background: #F3F4F6; border-radius: 6px; font-size: 14px; color: #4B5563;"></div>
+            `;
+            chartSection.insertBefore(cardDiv, chartSection.firstChild);
+
+            // Create datasets
+            const datasets = sensorMetadata.map((sensor, i) => ({
+                label: sensor.name + ' (' + sensor.unit + ')',
+                data: [],
+                borderColor: CHART_COLORS[i % CHART_COLORS.length],
+                backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '33',
+                yAxisID: 'y' + Object.keys(unitGroups).indexOf(sensor.unit || 'unknown'),
+                tension: 0.3,
+                pointRadius: 0,
+                borderWidth: 2
+            }));
+
+            // Create Y-axes
+            const scales = {
+                x: {
+                    type: 'time',
+                    time: { unit: 'second' },
+                    title: { display: true, text: 'Time', color: '#6B7280' },
+                    ticks: { color: '#6B7280' },
+                    grid: { color: '#E5E7EB' }
+                }
+            };
+
+            Object.keys(unitGroups).forEach((unit, i) => {
+                scales['y' + i] = {
+                    type: 'linear',
+                    position: i % 2 === 0 ? 'left' : 'right',
+                    title: { display: true, text: unit, color: '#6B7280' },
+                    ticks: { color: '#6B7280' },
+                    grid: { drawOnChartArea: i === 0, color: '#E5E7EB' }
+                };
+            });
+
+            // Create chart
+            const ctx = document.getElementById(chartId).getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: { color: '#2E3036' }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+
+            overlayCharts.set(chartId, { chart, sensors: sensorsArray, metadata: sensorMetadata });
+
+            // Subscribe to all sensors
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'subscribe',
+                    sensors: sensorsArray
+                }));
+            }
+
+            // Clear selection
+            selectedSensors.clear();
+            document.querySelectorAll('.sensor-item.selected').forEach(item => {
+                item.classList.remove('selected');
+            });
+            updateOverlayButton();
+        }
+
+        function removeOverlayChart(chartId) {
+            const chartData = overlayCharts.get(chartId);
+            if (chartData) {
+                // Unsubscribe from sensors
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'unsubscribe',
+                        sensors: chartData.sensors
+                    }));
+                }
+
+                // Destroy chart
+                chartData.chart.destroy();
+                overlayCharts.delete(chartId);
+            }
+
+            // Remove DOM element
+            document.getElementById(`card-${chartId}`)?.remove();
+        }
+
+        function updateOverlayChart(sensorPath, value, timestamp) {
+            // Update all overlay charts that contain this sensor
+            overlayCharts.forEach((chartData, chartId) => {
+                const sensorIndex = chartData.sensors.indexOf(sensorPath);
+                if (sensorIndex !== -1) {
+                    const chart = chartData.chart;
+                    const dataset = chart.data.datasets[sensorIndex];
+
+                    // Add new data point
+                    dataset.data.push({ x: timestamp, y: value });
+
+                    // Keep last 100 points
+                    if (dataset.data.length > 100) {
+                        dataset.data.shift();
+                    }
+
+                    chart.update('none');
+
+                    // Update correlation display
+                    updateCorrelationDisplay(chartId);
+                }
+            });
+        }
+
+        function updateCorrelationDisplay(chartId) {
+            const chartData = overlayCharts.get(chartId);
+            if (!chartData || chartData.sensors.length < 2) return;
+
+            const correlations = [];
+            const datasets = chartData.chart.data.datasets;
+
+            for (let i = 0; i < datasets.length - 1; i++) {
+                for (let j = i + 1; j < datasets.length; j++) {
+                    const data1 = datasets[i].data.map(d => d.y);
+                    const data2 = datasets[j].data.map(d => d.y);
+
+                    if (data1.length >= 10 && data2.length >= 10) {
+                        const r = pearsonCorrelation(data1, data2);
+                        if (!isNaN(r)) {
+                            correlations.push({
+                                pair: `${chartData.metadata[i].name} ↔ ${chartData.metadata[j].name}`,
+                                correlation: r.toFixed(3)
+                            });
+                        }
+                    }
+                }
+            }
+
+            const corrDiv = document.getElementById(chartId + '-correlation');
+            if (corrDiv && correlations.length > 0) {
+                corrDiv.innerHTML = '<strong>Pearson Correlations:</strong> ' +
+                    correlations.map(c => `${c.pair}: r=${c.correlation}`).join(' | ');
+            }
+        }
+
+        function pearsonCorrelation(x, y) {
+            const n = Math.min(x.length, y.length);
+            if (n < 2) return 0;
+
+            const xMean = x.slice(0, n).reduce((a, b) => a + b, 0) / n;
+            const yMean = y.slice(0, n).reduce((a, b) => a + b, 0) / n;
+
+            let num = 0, denX = 0, denY = 0;
+            for (let i = 0; i < n; i++) {
+                const dx = x[i] - xMean;
+                const dy = y[i] - yMean;
+                num += dx * dy;
+                denX += dx * dx;
+                denY += dy * dy;
+            }
+
+            return num / Math.sqrt(denX * denY);
+        }
+
+        // FFT Analysis Functions
+        const fftStates = {}; // Track FFT state per sensor
+
+        function toggleFFT(sensorPath) {
+            const chart = charts[sensorPath];
+            if (!chart) return;
+
+            const button = document.querySelector(`[onclick="toggleFFT('${sensorPath}')"]`);
+            const isFFTMode = fftStates[sensorPath]?.isFFT || false;
+
+            if (isFFTMode) {
+                // Switch back to time domain
+                fftStates[sensorPath].isFFT = false;
+                button.classList.remove('active');
+                button.textContent = 'FFT';
+
+                // Recreate as time-domain chart
+                const cardId = `card-${sensorPath.replace(/\\//g, '-')}`;
+                const card = document.getElementById(cardId);
+                const sensorInfo = fftStates[sensorPath].sensorInfo;
+
+                // Store the button HTML before removing
+                const buttonsHTML = card.querySelector('.chart-buttons').innerHTML;
+
+                // Remove and recreate
+                removeChart(sensorPath);
+                createChart(sensorPath, sensorInfo);
+            } else {
+                // Switch to FFT mode
+                fftStates[sensorPath] = fftStates[sensorPath] || {};
+                fftStates[sensorPath].isFFT = true;
+                fftStates[sensorPath].sensorInfo = chart.options.sensorInfo || {};
+                button.classList.add('active');
+                button.textContent = 'Time';
+
+                // Convert to FFT chart
+                createFFTChart(sensorPath, chart);
+            }
+        }
+
+        function createFFTChart(sensorPath, timeChart) {
+            const chartId = `chart-${sensorPath.replace(/\\//g, '-')}`;
+
+            // Destroy existing time-domain chart
+            timeChart.destroy();
+
+            // Create FFT chart (bar chart for frequency domain)
+            const ctx = document.getElementById(chartId);
+            const fftChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [], // Frequency bins (Hz)
+                    datasets: [{
+                        label: 'Amplitude (g RMS)',
+                        data: [],
+                        backgroundColor: 'rgba(255, 54, 33, 0.8)',
+                        borderColor: '#FF3621',
+                        borderWidth: 1,
+                        barPercentage: 0.95,
+                        categoryPercentage: 1.0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: {
+                            type: 'category',
+                            title: {
+                                display: true,
+                                text: 'Frequency (Hz)',
+                                color: '#A0A4A8',
+                                font: { size: 12, weight: 'bold' }
+                            },
+                            ticks: {
+                                color: '#A0A4A8',
+                                maxRotation: 45,
+                                minRotation: 45,
+                                autoSkip: true,
+                                maxTicksLimit: 20
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        },
+                        y: {
+                            type: 'logarithmic',
+                            title: {
+                                display: true,
+                                text: 'Amplitude (g RMS)',
+                                color: '#A0A4A8',
+                                font: { size: 12, weight: 'bold' }
+                            },
+                            ticks: {
+                                color: '#A0A4A8',
+                                callback: function(value) {
+                                    return value.toExponential(2);
+                                }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            min: 0.0001
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(26, 31, 58, 0.98)',
+                            titleColor: '#E8EAED',
+                            bodyColor: '#A0A4A8',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            padding: 12,
+                            callbacks: {
+                                title: (items) => `${items[0].label} Hz`,
+                                label: (item) => `Amplitude: ${item.parsed.y.toFixed(4)} g`
+                            }
+                        },
+                        annotation: {
+                            annotations: getBearingFrequencyAnnotations()
+                        }
+                    }
+                }
+            });
+
+            // Store FFT chart
+            charts[sensorPath] = fftChart;
+
+            // Start FFT computation interval
+            startFFTUpdates(sensorPath);
+        }
+
+        function getBearingFrequencyAnnotations() {
+            // Bearing defect frequencies for typical motor bearing
+            // BPFO (Ball Pass Frequency Outer): 107.5 Hz
+            // BPFI (Ball Pass Frequency Inner): 162.5 Hz
+            // BSF (Ball Spin Frequency): 42.8 Hz
+            // FTF (Fundamental Train Frequency): 16.2 Hz
+
+            return {
+                bpfo: {
+                    type: 'line',
+                    xMin: 107.5,
+                    xMax: 107.5,
+                    borderColor: '#FF3621',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    label: {
+                        display: true,
+                        content: 'BPFO',
+                        position: 'start',
+                        backgroundColor: '#FF3621',
+                        color: 'white',
+                        font: { size: 10, weight: 'bold' }
+                    }
+                },
+                bpfi: {
+                    type: 'line',
+                    xMin: 162.5,
+                    xMax: 162.5,
+                    borderColor: '#00A9E0',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    label: {
+                        display: true,
+                        content: 'BPFI',
+                        position: 'start',
+                        backgroundColor: '#00A9E0',
+                        color: 'white',
+                        font: { size: 10, weight: 'bold' }
+                    }
+                },
+                bsf: {
+                    type: 'line',
+                    xMin: 42.8,
+                    xMax: 42.8,
+                    borderColor: '#10B981',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    label: {
+                        display: true,
+                        content: 'BSF',
+                        position: 'start',
+                        backgroundColor: '#10B981',
+                        color: 'white',
+                        font: { size: 10, weight: 'bold' }
+                    }
+                },
+                ftf: {
+                    type: 'line',
+                    xMin: 16.2,
+                    xMax: 16.2,
+                    borderColor: '#FBBF24',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    label: {
+                        display: true,
+                        content: 'FTF',
+                        position: 'start',
+                        backgroundColor: '#FBBF24',
+                        color: 'white',
+                        font: { size: 10, weight: 'bold' }
+                    }
+                }
+            };
+        }
+
+        function startFFTUpdates(sensorPath) {
+            // Store time-domain data buffer for FFT computation
+            if (!fftStates[sensorPath]) {
+                fftStates[sensorPath] = {};
+            }
+
+            // Initialize data buffer if not already exists
+            if (!fftStates[sensorPath].dataBuffer) {
+                fftStates[sensorPath].dataBuffer = [];
+            }
+
+            // Update FFT every 500ms
+            fftStates[sensorPath].updateInterval = setInterval(() => {
+                computeAndUpdateFFT(sensorPath);
+            }, 500);
+        }
+
+        function computeAndUpdateFFT(sensorPath) {
+            const chart = charts[sensorPath];
+            const state = fftStates[sensorPath];
+
+            if (!chart || !state || !state.dataBuffer || state.dataBuffer.length < 8) {
+                console.log(`FFT: Waiting for data... Buffer size: ${state?.dataBuffer?.length || 0}`);
+                return; // Need at least 8 samples for FFT (will round to power of 2)
+            }
+
+            // Get last 256 samples from buffer (power of 2 for FFT)
+            const bufferSize = Math.min(256, Math.pow(2, Math.floor(Math.log2(state.dataBuffer.length))));
+            const samples = state.dataBuffer.slice(-bufferSize);
+            console.log(`FFT: Computing with ${bufferSize} samples from buffer of ${state.dataBuffer.length}`);
+
+            // Compute FFT using fft.js library
+            const fft = new FFTNayuki(bufferSize);
+            const real = new Array(bufferSize);
+            const imag = new Array(bufferSize);
+
+            // Copy samples and apply Hanning window
+            for (let i = 0; i < bufferSize; i++) {
+                const window = 0.5 * (1 - Math.cos(2 * Math.PI * i / (bufferSize - 1)));
+                real[i] = samples[i] * window;
+                imag[i] = 0;
+            }
+
+            // Perform FFT
+            fft.transform(real, imag);
+
+            // Compute magnitudes and frequency bins
+            const sampleRate = 2; // 2 Hz (500ms updates)
+            const freqResolution = sampleRate / bufferSize;
+            const numBins = Math.floor(bufferSize / 2); // Only positive frequencies
+
+            const frequencies = [];
+            const magnitudes = [];
+
+            for (let i = 0; i < numBins; i++) {
+                const freq = i * freqResolution;
+                if (freq <= 500) { // Only show up to 500 Hz
+                    frequencies.push(freq.toFixed(1));
+                    const magnitude = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]) / bufferSize;
+                    magnitudes.push(magnitude);
+                }
+            }
+
+            // Update chart
+            chart.data.labels = frequencies;
+            chart.data.datasets[0].data = magnitudes;
+            chart.update('none');
+
+            console.log(`FFT: Updated chart with ${frequencies.length} frequency bins (0 to ${frequencies[frequencies.length-1]} Hz)`);
+            console.log(`FFT: Magnitude range: ${Math.min(...magnitudes).toExponential(2)} to ${Math.max(...magnitudes).toExponential(2)}`);
+        }
+
+        // Simple FFT implementation (Cooley-Tukey algorithm)
+        class FFTNayuki {
+            constructor(n) {
+                this.n = n;
+                this.levels = Math.log2(n);
+                if (Math.pow(2, this.levels) !== n) {
+                    throw new Error('FFT size must be power of 2');
+                }
+            }
+
+            transform(real, imag) {
+                const n = this.n;
+
+                // Bit-reversal permutation
+                for (let i = 0; i < n; i++) {
+                    const j = this.reverseBits(i, this.levels);
+                    if (j > i) {
+                        [real[i], real[j]] = [real[j], real[i]];
+                        [imag[i], imag[j]] = [imag[j], imag[i]];
+                    }
+                }
+
+                // Cooley-Tukey decimation-in-time FFT
+                for (let size = 2; size <= n; size *= 2) {
+                    const halfsize = size / 2;
+                    const tablestep = n / size;
+                    for (let i = 0; i < n; i += size) {
+                        for (let j = i, k = 0; j < i + halfsize; j++, k += tablestep) {
+                            const tpre = real[j + halfsize] * Math.cos(2 * Math.PI * k / n) +
+                                        imag[j + halfsize] * Math.sin(2 * Math.PI * k / n);
+                            const tpim = -real[j + halfsize] * Math.sin(2 * Math.PI * k / n) +
+                                         imag[j + halfsize] * Math.cos(2 * Math.PI * k / n);
+                            real[j + halfsize] = real[j] - tpre;
+                            imag[j + halfsize] = imag[j] - tpim;
+                            real[j] += tpre;
+                            imag[j] += tpim;
+                        }
+                    }
+                }
+            }
+
+            reverseBits(x, bits) {
+                let y = 0;
+                for (let i = 0; i < bits; i++) {
+                    y = (y << 1) | (x & 1);
+                    x >>>= 1;
+                }
+                return y;
             }
         }
 
@@ -2714,9 +3415,16 @@ def get_scripts_html() -> str:
                             <span class="sensor-add">+</span>
                         `;
 
-                        sensorItem.onclick = () => {
-                            if (!charts[sensor.path]) {
-                                createChart(sensor.path, sensor);
+                        sensorItem.onclick = (event) => {
+                            // Check for Ctrl/Cmd key for multi-selection
+                            if (event.ctrlKey || event.metaKey) {
+                                event.stopPropagation();
+                                toggleSensorSelection(sensor.path, sensor, sensorItem);
+                            } else {
+                                // Normal single chart creation
+                                if (!charts[sensor.path]) {
+                                    createChart(sensor.path, sensor);
+                                }
                             }
                         };
 

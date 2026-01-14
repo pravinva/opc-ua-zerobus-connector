@@ -15,7 +15,7 @@ from typing import List, Optional
 
 from asyncua import ua
 from asyncua.crypto import uacrypto
-from asyncua.server.user_manager import UserManager
+from asyncua.server.user_managers import UserManager
 
 logger = logging.getLogger("ot_simulator.opcua_security")
 

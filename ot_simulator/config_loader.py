@@ -144,7 +144,9 @@ class SimulatorConfig:
         web_ui = WebUIConfig(**data.get("web_ui", {}))
 
         opcua_data = data.get("opcua", {})
-        opcua = OPCUAConfig(**opcua_data)
+        # Filter out 'security' key until OPCUAConfig supports it
+        opcua_data_filtered = {k: v for k, v in opcua_data.items() if k != 'security'}
+        opcua = OPCUAConfig(**opcua_data_filtered)
 
         mqtt_data = data.get("mqtt", {})
         mqtt_broker = MQTTBrokerConfig(**mqtt_data.get("broker", {}))

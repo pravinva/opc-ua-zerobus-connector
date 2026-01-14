@@ -297,30 +297,99 @@ class WebSocketServer:
                 return {"success": True, "message": "\n".join(lines)}
 
             elif command.action == "wot_query":
-                # WoT semantic query - filter Thing Description browser
+                # WoT semantic query - filter Thing Description browser AND list matching sensors
+                from ot_simulator.sensor_models import IndustryType, get_industry_sensors
+
                 params = command.parameters or {}
                 semantic_type = params.get("semantic_type")
-                industry = params.get("industry")
-                unit = params.get("unit")
-                search_text = params.get("search_text")
+                industry_filter = params.get("industry")
+                unit_filter = params.get("unit")
+                search_text = params.get("search_text", "").lower()
 
-                # Build response with filter parameters
+                # Collect all matching sensors
+                matching_sensors = []
+
+                # Determine which industries to search
+                if industry_filter:
+                    try:
+                        industries = [IndustryType(industry_filter.lower())]
+                    except ValueError:
+                        industries = list(IndustryType)
+                else:
+                    industries = list(IndustryType)
+
+                # Search through all sensors
+                for ind in industries:
+                    sensors = get_industry_sensors(ind)
+                    for sim in sensors:
+                        cfg = sim.config
+                        sensor_name = cfg.name.lower()
+
+                        # Apply filters
+                        matches = True
+
+                        # Search text filter (match sensor name)
+                        if search_text and search_text not in sensor_name:
+                            matches = False
+
+                        # Unit filter
+                        if unit_filter and unit_filter.lower() not in cfg.unit.lower():
+                            matches = False
+
+                        # Semantic type filter (would need semantic metadata in sensor config)
+                        # For now, skip semantic_type filtering
+
+                        if matches:
+                            matching_sensors.append({
+                                "path": f"{ind.value}/{cfg.name}",
+                                "name": cfg.name,
+                                "unit": cfg.unit,
+                                "range": f"{cfg.min_value}-{cfg.max_value}",
+                                "type": cfg.sensor_type.value,
+                                "industry": ind.value
+                            })
+
+                # Build response message
                 filters_applied = []
-                if semantic_type:
-                    filters_applied.append(f"semantic type: {semantic_type}")
-                if industry:
-                    filters_applied.append(f"industry: {industry}")
-                if unit:
-                    filters_applied.append(f"unit: {unit}")
                 if search_text:
                     filters_applied.append(f"search: '{search_text}'")
+                if industry_filter:
+                    filters_applied.append(f"industry: {industry_filter}")
+                if unit_filter:
+                    filters_applied.append(f"unit: {unit_filter}")
+                if semantic_type:
+                    filters_applied.append(f"semantic type: {semantic_type}")
 
-                filters_str = ", ".join(filters_applied) if filters_applied else "none"
+                filters_str = ", ".join(filters_applied) if filters_applied else "no filters"
+
+                if not matching_sensors:
+                    message = f"No sensors found matching filters: {filters_str}"
+                else:
+                    lines = [f"Found {len(matching_sensors)} sensor(s) matching {filters_str}:\n"]
+
+                    # Group by industry
+                    by_industry = {}
+                    for sensor in matching_sensors:
+                        ind = sensor["industry"]
+                        if ind not in by_industry:
+                            by_industry[ind] = []
+                        by_industry[ind].append(sensor)
+
+                    for ind_name in sorted(by_industry.keys()):
+                        sensors_list = by_industry[ind_name]
+                        lines.append(f"\n{ind_name.upper()} ({len(sensors_list)} sensors):")
+                        for sensor in sensors_list:
+                            lines.append(f"  • {sensor['name']}")
+                            lines.append(f"    Range: {sensor['range']} {sensor['unit']}")
+                            lines.append(f"    Type: {sensor['type']}")
+
+                    message = "\n".join(lines)
 
                 return {
                     "success": True,
-                    "message": f"Applying WoT filters: {filters_str}\n\nCheck the WoT browser to see filtered results!",
-                    "wot_filters": params  # Include for frontend to apply
+                    "message": message,
+                    "wot_filters": params,  # Include for frontend to apply
+                    "matching_sensors": matching_sensors  # Include sensor list
                 }
 
             elif command.action == "explain_wot_concept":

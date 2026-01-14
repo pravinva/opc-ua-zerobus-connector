@@ -22,28 +22,29 @@ opcua:
   namespace_uri: "http://databricks.com/iot-simulator"
 
   # Security Configuration (OPC UA 10101 compliant)
-  security:
-    # Enable/disable security (set to false for development)
-    enabled: false  # Set to true to enable Basic256Sha256 + certificates
+  # TEMPORARILY COMMENTED OUT - OPCUAConfig dataclass doesn't have security field yet
+  # security:
+  #   # Enable/disable security (set to false for development)
+  #   enabled: false  # Set to true to enable Basic256Sha256 + certificates
 
-    # Security policy: Basic256Sha256 (OPC UA 10101 recommended)
-    security_policy: "Basic256Sha256"  # Basic256Sha256, NoSecurity
-    security_mode: "SignAndEncrypt"  # Sign, SignAndEncrypt
+  #   # Security policy: Basic256Sha256 (OPC UA 10101 recommended)
+  #   security_policy: "Basic256Sha256"  # Basic256Sha256, NoSecurity
+  #   security_mode: "SignAndEncrypt"  # Sign, SignAndEncrypt
 
-    # Certificate paths (required if security enabled)
-    server_cert_path: "ot_simulator/certs/server_cert.pem"
-    server_key_path: "ot_simulator/certs/server_key.pem"
+  #   # Certificate paths (required if security enabled)
+  #   server_cert_path: "ot_simulator/certs/server_cert.pem"
+  #   server_key_path: "ot_simulator/certs/server_key.pem"
 
-    # Trusted client certificates directory (auto-created if missing)
-    trusted_certs_dir: "ot_simulator/certs/trusted"
+  #   # Trusted client certificates directory (auto-created if missing)
+  #   trusted_certs_dir: "ot_simulator/certs/trusted"
 
-    # Username/password authentication (optional, works with or without certificates)
-    enable_user_auth: false  # Set to true to require login
-    users:
-      # Format: username: password
-      admin: "databricks123"
-      operator: "operator123"
-      readonly: "readonly123"
+  #   # Username/password authentication (optional, works with or without certificates)
+  #   enable_user_auth: false  # Set to true to require login
+  #   users:
+  #     # Format: username: password
+  #     admin: "databricks123"
+  #     operator: "operator123"
+  #     readonly: "readonly123"
 
   # Update frequency
   update_rate_hz: 2.0  # Updates per second (default 2 Hz)

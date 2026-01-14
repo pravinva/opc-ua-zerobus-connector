@@ -3,7 +3,7 @@
   "zerobus_endpoint": "1444828305810485.zerobus.us-west-2.cloud.databricks.com",
   "auth": {
     "client_id": "52393ed8-ea22-4830-a6ef-6b6545e6be5f",
-    "client_secret_encrypted": "Z0FBQUFBQnBaZ2hpVGxORVVEcm4xT3ZKMkcyaGZhUlFQbU1COU91blRmNGszdFVnWEdzSEgydDl4dFZNVW9oMlIzWEtsMjlkcFM2UWlIY0lzVXI5eUE1SnN5YjlZempXVTE3Vm81VkNaNnJtWURWLXRCWnFGNzhTTk1GNXEzOXJFbXUxRG5sYzc4bTg=",
+    "client_secret_encrypted": "Z0FBQUFBQnBaNjZhSkQxWUREck56Qm9OdmVGb0tYUzJ4czZQZy1qOG5aNkZtS08yVHpMa3d5eWZJQ0FVMzlTZVhodXBDTmVvbGZkUnpncjc0UHBlYUEwU2xRemQ0bno5TDZyZ3lhUTFWWE1HTVVjRXZaQnE3eUUxYnpKS2ZPWDRtMnhkR1M0NkJGOGg=",
     "_encrypted": true
   },
   "target": {
@@ -12,23 +12,31 @@
     "table": "mqtt_events_bronze"
   },
   "selected_sensors": [
-    "utilities/turbine_1_speed",
-    "utilities/turbine_1_power_output",
     "utilities/turbine_1_bearing_temp_1",
     "utilities/turbine_1_bearing_temp_2",
     "utilities/turbine_1_vibration",
-    "utilities/turbine_1_oil_pressure",
-    "utilities/water_pump_1_flow",
-    "utilities/water_pump_1_discharge_pressure",
-    "utilities/water_pump_1_motor_power",
     "utilities/water_pump_1_motor_temp",
-    "utilities/water_ph",
-    "utilities/water_conductivity",
-    "utilities/water_turbidity",
-    "utilities/gas_compressor_1_pressure_in",
-    "utilities/gas_compressor_1_pressure_out",
-    "utilities/gas_compressor_1_flow",
-    "utilities/gas_compressor_1_motor_power",
-    "utilities/gas_compressor_1_discharge_temp"
+    "utilities/gas_compressor_1_discharge_temp",
+    "electric_power/gt_1_exhaust_temp",
+    "electric_power/gt_1_vibration",
+    "electric_power/st_1_steam_temp",
+    "electric_power/gen_1_current",
+    "electric_power/gen_1_stator_temp",
+    "electric_power/gen_1_bearing_temp",
+    "electric_power/transformer_1_oil_temp",
+    "electric_power/transformer_1_winding_temp",
+    "electric_power/cooling_tower_1_water_temp",
+    "renewable_energy/wind_turbine_1_nacelle_temp",
+    "renewable_energy/wind_turbine_1_gearbox_temp",
+    "renewable_energy/wind_turbine_1_bearing_vibration",
+    "renewable_energy/wind_turbine_1_generator_temp",
+    "renewable_energy/solar_array_1_dc_current",
+    "renewable_energy/solar_array_1_panel_temp",
+    "renewable_energy/solar_inverter_1_ac_current",
+    "renewable_energy/solar_inverter_1_temp",
+    "renewable_energy/bess_1_current",
+    "renewable_energy/bess_1_temp_avg",
+    "renewable_energy/bess_1_temp_max",
+    "renewable_energy/solar_tracker_1_motor_current"
   ]
 }
