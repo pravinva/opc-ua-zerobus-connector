@@ -2,7 +2,7 @@
 
 A **professional-grade edge connector** and **industrial OT data simulator** supporting **OPC-UA, MQTT, and Modbus** protocols, with advanced visualization, natural language control, and W3C WoT integration.
 
-## 🌟 Key Features
+## Key Features
 
 ### Connector Features
 - **Multi-Protocol Support**: OPC-UA, MQTT (TLS), Modbus TCP/RTU
@@ -25,7 +25,7 @@ A **professional-grade edge connector** and **industrial OT data simulator** sup
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Simulator Only (Local Development)
 
@@ -73,7 +73,7 @@ docker run --rm -p 8080:8080 -p 9090:9090 \
 
 ---
 
-## 📊 Advanced Visualizations (Training-Grade)
+## Advanced Visualizations (Training-Grade)
 
 The simulator now includes **5 of 8 priority visualizations** for industrial ML training and diagnostics:
 
@@ -165,7 +165,7 @@ python -m ot_simulator.llm_agent_operator
 
 ---
 
-## 🌐 W3C WoT Thing Descriptions
+## W3C WoT Thing Descriptions
 
 All 379 sensors are exposed as **W3C WoT Thing Descriptions** with semantic metadata:
 
@@ -286,7 +286,7 @@ ngrok tcp 4840
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### Purdue Model Compliant Deployment
 
@@ -451,7 +451,7 @@ opc-ua-zerobus-connector/
 
 ---
 
-## 🎯 Supported Protocols
+## Supported Protocols
 
 ### OPC-UA (OPC Unified Architecture)
 - **Standard**: IEC 62541
@@ -477,7 +477,7 @@ opc-ua-zerobus-connector/
 
 ---
 
-## 📊 Databricks Integration
+## Databricks Integration
 
 ### Unity Catalog Schema
 
@@ -651,7 +651,7 @@ python -m opcua2uc --test-zerobus
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 All documentation is organized in the `docs/` directory:
 
@@ -681,7 +681,7 @@ Status tracking documents are kept locally and excluded from the repository via 
 
 ---
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -712,7 +712,7 @@ Status tracking documents are kept locally and excluded from the repository via 
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 This is an internal Databricks project. For issues or feature requests:
 1. Check existing documentation in the repo
@@ -721,13 +721,13 @@ This is an internal Databricks project. For issues or feature requests:
 
 ---
 
-## 📄 License
+## License
 
 Proprietary - Databricks Inc.
 
 ---
 
-## 🎯 Quick Links
+## Quick Links
 
 - **Live Demo**: http://localhost:8989 (after starting simulator)
 - **GitHub**: https://github.com/pravinva/opc-ua-zerobus-connector
@@ -741,7 +741,7 @@ Proprietary - Databricks Inc.
 
 ---
 
-## 🔢 Statistics
+## Statistics
 
 - **Total Sensors**: 379 across 16 industries
 - **Visualization Code**: 1,356 lines of advanced visualizations
