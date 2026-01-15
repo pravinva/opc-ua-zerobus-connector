@@ -1,0 +1,31 @@
+# Simple test config to verify connector can read from simulator
+# This config does NOT push to Databricks - just logs data
+
+sources:
+  - name: test_opcua
+    endpoint: opc.tcp://localhost:4840
+    protocol: opcua
+    enabled: true
+    security_mode: None
+    # Limit to just a few sensors for testing
+    variable_limit: 10
+    reconnect:
+      enabled: true
+      initial_delay: 1
+      max_delay: 30
+
+# Disable Zerobus for local testing
+zerobus:
+  enabled: false
+
+# Enable logging to see data
+logging:
+  level: INFO
+  format: text
+  output: stdout
+
+# Enable health check endpoint
+monitoring:
+  health_check:
+    enabled: true
+    port: 8081

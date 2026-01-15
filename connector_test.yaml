@@ -1,0 +1,18 @@
+# Test config for connector with Web UI
+web_port: 8080
+metrics_port: 9091  # Changed from 9090 to avoid conflict with simulator
+
+# OPC UA source pointing to simulator
+sources:
+  - name: simulator
+    endpoint: opc.tcp://localhost:4840
+    protocol: opcua
+    variable_limit: 20
+    publishing_interval_ms: 1000
+    security:
+      enabled: false  # No security for local testing
+
+# Databricks config (optional for testing)
+databricks:
+  workspace_host: ""  # Leave empty for testing without Databricks
+  enabled: false
