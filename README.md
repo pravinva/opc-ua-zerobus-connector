@@ -75,9 +75,9 @@ docker run --rm -p 8080:8080 -p 9090:9090 \
 
 ## Advanced Visualizations (Training-Grade)
 
-The simulator now includes **5 of 8 priority visualizations** for industrial ML training and diagnostics:
+The simulator provides advanced visualization capabilities for industrial ML training and diagnostics:
 
-### 1. ✅ FFT Frequency Analysis (Priority 1)
+### 1. FFT Frequency Analysis
 - **Use Case**: Bearing fault detection, vibration analysis
 - **Technology**: FFT.js 4.0.3, Cooley-Tukey algorithm
 - **Features**:
@@ -87,7 +87,7 @@ The simulator now includes **5 of 8 priority visualizations** for industrial ML 
   - Logarithmic Y-axis for amplitude (g RMS)
 - **Button**: Cyan, appears on vibration sensors
 
-### 2. ✅ Multi-Sensor Overlay + Correlation (Priority 2)
+### 2. Multi-Sensor Overlay + Correlation
 - **Use Case**: Feature engineering for ML, correlation analysis
 - **Features**:
   - Overlay up to 8 sensors on single chart
@@ -96,7 +96,7 @@ The simulator now includes **5 of 8 priority visualizations** for industrial ML 
   - Dual/triple Y-axis support
 - **Button**: Blue multi-select with Ctrl+Click
 
-### 3. ✅ Spectrogram (Time-Frequency Heatmap) (Priority 3) - **NEW!**
+### 3. Spectrogram (Time-Frequency Heatmap)
 - **Use Case**: Bearing degradation tracking, transient analysis
 - **Features**:
   - STFT (Short-Time Fourier Transform) visualization
@@ -105,7 +105,7 @@ The simulator now includes **5 of 8 priority visualizations** for industrial ML 
   - Magnitude shown by bubble size and opacity
 - **Button**: Purple, appears on vibration sensors
 
-### 4. ✅ SPC Charts (Statistical Process Control) (Priority 6) - **NEW!**
+### 4. SPC Charts (Statistical Process Control)
 - **Use Case**: Manufacturing quality control, Six Sigma compliance
 - **Features**:
   - Real-time ±3σ control limits (UCL/LCL)
@@ -114,7 +114,7 @@ The simulator now includes **5 of 8 priority visualizations** for industrial ML 
   - 100-sample rolling buffer
 - **Button**: Green, appears on ALL sensors
 
-### 5. ✅ Correlation Heatmap Matrix (Priority 4) - **NEW!**
+### 5. Correlation Heatmap Matrix
 - **Use Case**: Sensor redundancy analysis, ML feature selection
 - **Features**:
   - Pairwise Pearson correlations for all active sensors
@@ -123,16 +123,9 @@ The simulator now includes **5 of 8 priority visualizations** for industrial ML 
   - Dynamic sizing based on sensor count
 - **Button**: "Correlation Heatmap" in overlay section
 
-**Remaining Visualizations** (roadmap):
-- Priority 5: Equipment Health Dashboard (partial)
-- Priority 7: 3D Equipment View (5-7 days)
-- Priority 8: Waterfall Plot (3-4 days)
-
-**Documentation**: See `docs/VISUALIZATION_STATUS.md (local only)` for complete details
-
 ---
 
-## 🤖 Natural Language Control
+## Natural Language Control
 
 Control the simulator using plain English powered by **Claude Sonnet 4.5**:
 
@@ -140,19 +133,19 @@ Control the simulator using plain English powered by **Claude Sonnet 4.5**:
 # Start Natural Language interface
 python -m ot_simulator.llm_agent_operator
 
-🎤 You: "start the OPC-UA server"
-🤖 Agent: ✓ OPCUA started
-💭 Starting OPC-UA protocol server on port 4840 with 379 sensors...
+You: "start the OPC-UA server"
+Agent: OPCUA started
+Starting OPC-UA protocol server on port 4840 with 379 sensors...
 
-🎤 You: "show me all vibration sensors in mining"
-🤖 Agent: Found 3 vibration sensors in mining:
-  • mining/crusher_1_vibration_x (g)
-  • mining/crusher_1_vibration_y (g)
-  • mining/vent_fan_1_vibration (g)
+You: "show me all vibration sensors in mining"
+Agent: Found 3 vibration sensors in mining:
+  - mining/crusher_1_vibration_x (g)
+  - mining/crusher_1_vibration_y (g)
+  - mining/vent_fan_1_vibration (g)
 
-🎤 You: "inject a fault into the crusher motor for 30 seconds"
-🤖 Agent: ✓ Fault injected into mining/crusher_1_motor_power
-💭 Simulating motor overload condition for testing...
+You: "inject a fault into the crusher motor for 30 seconds"
+Agent: Fault injected into mining/crusher_1_motor_power
+Simulating motor overload condition for testing...
 ```
 
 **Features**:
