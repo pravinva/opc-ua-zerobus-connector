@@ -161,9 +161,7 @@ python -m ot_simulator.llm_agent_operator
 - Databricks Foundation Model integration
 - Configurable via `llm_agent_config.yaml`
 
-**Documentation**:
-- `docs/QUICK_START_NATURAL_LANGUAGE.md (local only)` - 5-minute guide
-- `docs/NATURAL_LANGUAGE_OPERATOR_GUIDE.md (local only)` - Comprehensive 400+ line guide
+**Usage**: Start the agent with `python -m ot_simulator.llm_agent_operator` and interact via natural language commands. The agent uses Claude Sonnet 4.5 through Databricks Foundation Models.
 
 ---
 
@@ -290,7 +288,64 @@ ngrok tcp 4840
 
 ## 🏗️ Architecture
 
-### Overall System
+### Purdue Model Compliant Deployment
+
+The connector respects industrial security architecture (ISA-95/IEC-62443 Purdue Model):
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ Level 5: Enterprise Network (IT)                                │
+│                                                                  │
+│              ┌──────────────────────┐                            │
+│              │   Databricks Cloud   │                            │
+│              │   Unity Catalog      │                            │
+│              │   Delta Tables       │                            │
+│              └──────────▲───────────┘                            │
+└─────────────────────────┼────────────────────────────────────────┘
+                          │ HTTPS/gRPC (TLS)
+┌─────────────────────────┼────────────────────────────────────────┐
+│ Level 3.5: DMZ / Edge (Industrial Firewall)                     │
+│                          │                                       │
+│              ┌───────────▼───────────┐                           │
+│              │  IoT Edge Connector   │  ← This Project          │
+│              │  (Docker Container)   │                           │
+│              │  ┌─────────────────┐  │                           │
+│              │  │ OPC UA Client   │  │                           │
+│              │  │ MQTT Client     │  │                           │
+│              │  │ Modbus Client   │  │                           │
+│              │  └─────────────────┘  │                           │
+│              │  ┌─────────────────┐  │                           │
+│              │  │ Zerobus gRPC    │  │                           │
+│              │  │ Buffering/Queue │  │                           │
+│              │  └─────────────────┘  │                           │
+│              └───────────▲───────────┘                           │
+└─────────────────────────┼────────────────────────────────────────┘
+                          │ One-way diode (data flows UP only)
+┌─────────────────────────┼────────────────────────────────────────┐
+│ Level 2: Control Network (OT - Isolated from IT)                │
+│                          │                                       │
+│    ┌─────────────┐  ┌───▼──────┐  ┌─────────────┐              │
+│    │  OPC UA     │  │  MQTT    │  │  Modbus     │              │
+│    │  Servers    │  │  Broker  │  │  Devices    │              │
+│    │  (PLCs)     │  │ (Sensors)│  │  (RTUs)     │              │
+│    └─────────────┘  └──────────┘  └─────────────┘              │
+│                                                                  │
+│ Level 1: Supervisory Control (SCADA/HMI)                        │
+│ Level 0: Field Devices (Physical Processes)                     │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Security Principles**:
+- Connector deploys in **DMZ** (Level 3.5), NOT inside plant network (Level 0-2)
+- **One-way data flow**: OT → DMZ → Cloud (no commands flow down)
+- **Firewall isolation**: OT network remains isolated from IT/Internet
+- **Read-only OPC UA/MQTT/Modbus subscriptions** (no writes to PLC)
+- **TLS/mTLS**: All cloud communication encrypted
+- **No inbound connections**: Connector initiates all connections
+
+### OT Data Simulator Architecture (Development/Testing Only)
+
+For development and testing, the simulator provides a safe OT environment:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -315,22 +370,6 @@ ngrok tcp 4840
 │   │ Chart.js  │  │ 500ms updates   │  │ Claude   │        │
 │   └───────────┘  └─────────────────┘  └──────────┘        │
 └─────────────────────────────────────────────────────────────┘
-                           │
-                  ┌────────▼─────────┐
-                  │   IoT Connector  │
-                  │  (This Project)  │
-                  └────────┬─────────┘
-                           │
-                  ┌────────▼─────────┐
-                  │     Zerobus      │
-                  │  (gRPC Streams)  │
-                  └────────┬─────────┘
-                           │
-                  ┌────────▼─────────┐
-                  │   Databricks     │
-                  │  Unity Catalog   │
-                  │   Delta Tables   │
-                  └──────────────────┘
 ```
 
 ### 3-Layer Simulator Architecture
@@ -434,7 +473,7 @@ opc-ua-zerobus-connector/
 - **Endpoint**: `modbus://0.0.0.0:502` (TCP) or `/dev/ttyUSB0` (RTU)
 - **Clients**: ModScan, QModMaster, Ignition Modbus
 
-**Configuration Guide**: See `docs/PROTOCOLS.md`
+**Configuration**: Protocol settings are configured in `ot_simulator/config.yaml`. See the inline comments for OPC UA security, MQTT TLS, and Modbus register mappings.
 
 ---
 
