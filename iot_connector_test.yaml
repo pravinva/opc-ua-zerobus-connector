@@ -1,0 +1,70 @@
+# Test config for consolidated iot_connector (enterprise-grade)
+# Tests OPC UA connection to simulator with Web GUI enabled
+
+# Web GUI configuration
+web_gui:
+  enabled: true
+  host: 0.0.0.0
+  port: 8080
+
+# Monitoring configuration
+monitoring:
+  health_check:
+    enabled: true
+    port: 8081
+  prometheus:
+    enabled: true
+    port: 9091  # Avoid conflict with simulator on 9090
+
+# OPC UA source pointing to simulator
+sources:
+  - name: simulator_test
+    endpoint: opc.tcp://localhost:4840
+    protocol: opcua
+    enabled: true
+
+    # Basic settings
+    publishing_interval_ms: 1000
+    variable_limit: 20
+
+    # Security disabled for local testing
+    security:
+      mode: None
+
+    # Reconnection settings
+    reconnect:
+      enabled: true
+      initial_delay: 1
+      max_delay: 30
+      backoff_multiplier: 2.0
+
+# Zerobus/Databricks config - disabled for local testing
+zerobus:
+  enabled: false
+  workspace_host: "https://test.cloud.databricks.com"
+  zerobus_endpoint: "https://test.cloud.databricks.com/api/2.0/streaming-ingest"
+
+  auth:
+    client_id: "test"
+    client_secret: "test"
+
+  target:
+    catalog: test
+    schema: test
+    table: test
+
+  batch:
+    max_records: 1000
+    timeout_seconds: 5.0
+
+# Credential manager - minimal for testing
+credentials:
+  storage:
+    type: none  # No credential storage for testing
+
+# Backpressure management
+backpressure:
+  max_queue_size: 10000
+  drop_policy: oldest
+  disk_spool:
+    enabled: false  # Disable for simple testing

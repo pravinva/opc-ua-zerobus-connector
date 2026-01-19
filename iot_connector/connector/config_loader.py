@@ -87,6 +87,15 @@ class ConfigLoader:
         with open(self.state_config_path, 'w') as f:
             json.dump(config, f, indent=2)
 
+    def save_config(self, config: Dict[str, Any]):
+        """
+        Alias for save_state() - saves configuration to JSON state file.
+
+        Args:
+            config: Configuration dictionary to save
+        """
+        self.save_state(config)
+
     def get(self, key: str, default: Any = None) -> Any:
         """
         Get configuration value by key (dot notation supported).

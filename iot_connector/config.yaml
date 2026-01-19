@@ -1,0 +1,57 @@
+# Test config for IoT Connector - Web UI only (no Databricks)
+# This allows testing the web UI without Databricks credentials
+
+# Web GUI Configuration
+web_gui:
+  enabled: true
+  host: 0.0.0.0
+  port: 8080
+
+# Monitoring Configuration
+monitoring:
+  health_check:
+    enabled: true
+    port: 8081
+  prometheus:
+    enabled: true
+    port: 9090
+
+# No pre-configured sources - use Web UI for discovery
+sources: []
+
+# DISABLE Zerobus for testing - just collect data, don't send
+zerobus:
+  enabled: false
+  workspace_host: "https://test.cloud.databricks.com"
+  zerobus_endpoint: "https://test.cloud.databricks.com/api/2.0/streaming-ingest"
+
+  auth:
+    client_id: "not-used"
+    client_secret: "not-used"
+
+  target:
+    catalog: "test"
+    schema: "test"
+    table: "test"
+
+  batch:
+    max_records: 1000
+    timeout_seconds: 5.0
+
+# Backpressure Management
+backpressure:
+  max_queue_size: 10000
+  drop_policy: oldest
+  disk_spool:
+    enabled: false  # Disabled for testing
+
+# Credential Manager
+credentials:
+  storage:
+    type: none
+
+# Logging
+logging:
+  level: INFO
+  format: text
+  output: stdout

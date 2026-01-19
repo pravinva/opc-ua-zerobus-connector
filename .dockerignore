@@ -1,0 +1,9 @@
+ot_simulator.log
+*.log
+.claude
+.claude.tmp
+.venv
+venv
+__pycache__
+*.pyc
+.git

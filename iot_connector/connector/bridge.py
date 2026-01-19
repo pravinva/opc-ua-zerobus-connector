@@ -94,8 +94,15 @@ class UnifiedBridge:
         """Start all components."""
         logger.info("Starting UnifiedBridge...")
 
-        # Connect to ZeroBus
-        await self.zerobus.connect(self._protobuf_descriptor)
+        # Only connect to ZeroBus if enabled in config
+        zerobus_config = self.config.get('zerobus', {})
+        zerobus_enabled = zerobus_config.get('enabled', False)
+
+        if zerobus_enabled:
+            logger.info("ZeroBus enabled - connecting to Databricks...")
+            await self.zerobus.connect(self._protobuf_descriptor)
+        else:
+            logger.info("ZeroBus disabled - skipping Databricks connection (config via web UI)")
 
         # Start protocol clients
         for source_config in self.sources:
@@ -107,11 +114,12 @@ class UnifiedBridge:
                 logger.error(f"Failed to start source {source_name}: {e}")
                 # Continue with other sources
 
-        # Start batch processor
-        self._batch_task = asyncio.create_task(self._batch_processor())
-
-        # Start backpressure spool processor
-        asyncio.create_task(self.backpressure.process_spool())
+        # Start batch processor only if ZeroBus is enabled
+        if zerobus_enabled:
+            self._batch_task = asyncio.create_task(self._batch_processor())
+            logger.info("Batch processor started")
+        else:
+            logger.info("Batch processor not started (ZeroBus disabled)")
 
         logger.info(f"✓ UnifiedBridge started with {len(self.clients)} active sources")
 
@@ -119,8 +127,12 @@ class UnifiedBridge:
         """Start a single protocol client with reconnection loop."""
         source_name = source_config.get('name', 'unknown')
 
+        # Get protocol type from config, or detect from endpoint
+        protocol_type = source_config.get('protocol', 'opcua')
+
         # Create protocol client
         client = create_protocol_client(
+            protocol_type=protocol_type,
             source_name=source_name,
             endpoint=source_config['endpoint'],
             config=source_config,
@@ -150,10 +162,13 @@ class UnifiedBridge:
 
                 # Start subscription/polling
                 logger.info(f"[{source_name}] Starting data collection...")
-                await client.start()
+                await client.subscribe()
 
-                # Client stopped (either error or manual stop)
-                await client.stop()
+                # Keep subscription running until shutdown
+                while not self._shutdown:
+                    await asyncio.sleep(1)
+
+                # Cleanup on shutdown
                 await client.disconnect()
 
                 # Reset reconnect delay on clean stop
@@ -377,7 +392,7 @@ class UnifiedBridge:
         """Get comprehensive metrics from all components."""
         return {
             'bridge': self.metrics,
-            'backpressure': self.backpressure.get_stats(),
+            'backpressure': self.backpressure.get_metrics(),
             'zerobus': self.zerobus.get_metrics(),
             'clients': {
                 name: {
@@ -389,12 +404,94 @@ class UnifiedBridge:
             }
         }
 
+    async def add_source(self, source_name: str, source_type: str, source_config: Dict[str, Any]):
+        """
+        Add a new data source dynamically.
+
+        Args:
+            source_name: Unique name for the source
+            source_type: Protocol type ('opcua', 'mqtt', 'modbus')
+            source_config: Source configuration dict with protocol-specific fields
+
+        Raises:
+            ValueError: If source already exists or config is invalid
+        """
+        # Check if source already exists
+        if source_name in self.clients:
+            raise ValueError(f"Source '{source_name}' already exists")
+
+        logger.info(f"Adding new source: {source_name} (type: {source_type})")
+
+        # Build full source config
+        full_config = {
+            'name': source_name,
+            'protocol': source_type,
+            **source_config
+        }
+
+        # Add to internal sources list
+        self.sources.append(full_config)
+
+        # Start the client if bridge is already running
+        if not self._shutdown:
+            try:
+                await self._start_client(full_config)
+                logger.info(f"✓ Source '{source_name}' added and started successfully")
+            except Exception as e:
+                # Remove from sources list if start failed
+                self.sources.remove(full_config)
+                logger.error(f"Failed to start source '{source_name}': {e}")
+                raise ValueError(f"Failed to start source: {e}")
+        else:
+            logger.info(f"✓ Source '{source_name}' added (will start when bridge starts)")
+
+    async def remove_source(self, source_name: str):
+        """
+        Remove an existing data source dynamically.
+
+        Args:
+            source_name: Name of the source to remove
+
+        Raises:
+            ValueError: If source doesn't exist
+        """
+        if source_name not in self.clients:
+            raise ValueError(f"Source '{source_name}' not found")
+
+        logger.info(f"Removing source: {source_name}")
+
+        # Stop the client
+        client = self.clients[source_name]
+        try:
+            await client.stop()
+            await client.disconnect()
+        except Exception as e:
+            logger.error(f"Error stopping source '{source_name}': {e}")
+
+        # Cancel the task
+        if source_name in self.client_tasks:
+            task = self.client_tasks[source_name]
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            del self.client_tasks[source_name]
+
+        # Remove from clients dict
+        del self.clients[source_name]
+
+        # Remove from sources list
+        self.sources = [s for s in self.sources if s.get('name') != source_name]
+
+        logger.info(f"✓ Source '{source_name}' removed successfully")
+
     def get_status(self) -> Dict[str, Any]:
         """Get current status of all components."""
         return {
             'active_sources': len(self.clients),
             'zerobus_connected': self.zerobus.get_connection_status()['connected'],
             'circuit_breaker_state': self.zerobus.circuit_breaker.state.value,
-            'backpressure_stats': self.backpressure.get_stats(),
+            'backpressure_stats': self.backpressure.get_metrics(),
             'metrics': self.get_metrics(),
         }

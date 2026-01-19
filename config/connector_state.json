@@ -1,0 +1,110 @@
+{
+  "web_gui": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 8080
+  },
+  "monitoring": {
+    "health_check": {
+      "enabled": true,
+      "port": 8081
+    },
+    "prometheus": {
+      "enabled": true,
+      "port": 9090
+    }
+  },
+  "sources": [
+    {
+      "name": "opcua_simulator",
+      "endpoint": "opc.tcp://localhost:4840/ot-simulator/server/",
+      "protocol": "opcua",
+      "enabled": true,
+      "publishing_interval_ms": 1000,
+      "variable_limit": 50,
+      "security": {
+        "mode": "None"
+      },
+      "reconnect": {
+        "enabled": true,
+        "initial_delay": 1,
+        "max_delay": 60,
+        "backoff_multiplier": 2.0
+      }
+    },
+    {
+      "name": "test-mqtt",
+      "type": "mqtt",
+      "endpoint": "mqtt://test-broker:1883",
+      "topics": [
+        "test/topic"
+      ],
+      "qos": 1
+    },
+    {
+      "name": "test-mqtt",
+      "protocol": "mqtt",
+      "endpoint": "mqtt://test-broker:1883",
+      "topics": [
+        "test/topic"
+      ],
+      "qos": 1
+    },
+    {
+      "name": "test-opcua",
+      "type": "opcua",
+      "endpoint": "opc.tcp://192.168.1.100:4840/test",
+      "variable_limit": 25,
+      "publishing_interval_ms": 1000
+    },
+    {
+      "name": "test-opcua",
+      "protocol": "opcua",
+      "endpoint": "opc.tcp://192.168.1.100:4840/test",
+      "variable_limit": 25,
+      "publishing_interval_ms": 1000
+    },
+    {
+      "name": "test-modbus",
+      "type": "modbus",
+      "endpoint": "192.168.1.200:502",
+      "unit_id": 1,
+      "polling_interval_ms": 2000
+    }
+  ],
+  "zerobus": {
+    "enabled": false,
+    "workspace_host": "https://test.cloud.databricks.com",
+    "zerobus_endpoint": "https://test.cloud.databricks.com/api/2.0/streaming-ingest",
+    "auth": {
+      "client_id": "not-used",
+      "client_secret": "not-used"
+    },
+    "target": {
+      "catalog": "test",
+      "schema": "test",
+      "table": "test"
+    },
+    "batch": {
+      "max_records": 1000,
+      "timeout_seconds": 5.0
+    }
+  },
+  "backpressure": {
+    "max_queue_size": 10000,
+    "drop_policy": "oldest",
+    "disk_spool": {
+      "enabled": false
+    }
+  },
+  "credentials": {
+    "storage": {
+      "type": "none"
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "text",
+    "output": "stdout"
+  }
+}

@@ -51,35 +51,45 @@ cat << "EOF"
 ╚═══════════════════════════════════════════════════════════╝
 EOF
 
-# Validate required environment variables
+# Validate required environment variables (only if ZeroBus is enabled)
 log "Validating environment variables..."
 
-REQUIRED_VARS=(
-    "DATABRICKS_CLIENT_ID"
-    "DATABRICKS_CLIENT_SECRET"
-)
-
-MISSING_VARS=()
-for var in "${REQUIRED_VARS[@]}"; do
-    if [ -z "${!var}" ]; then
-        MISSING_VARS+=("$var")
-    fi
-done
-
-if [ ${#MISSING_VARS[@]} -gt 0 ]; then
-    error "Missing required environment variables: ${MISSING_VARS[*]}"
-    error "Please set these variables in your .env file or docker-compose.yml"
-    exit 1
-fi
-
-log "Environment variables validated ✓"
-
-# Validate config file exists
+# Check if config file exists first
 CONFIG_FILE="${CONFIG_PATH:-/app/config/connector.yaml}"
 if [ ! -f "$CONFIG_FILE" ]; then
     error "Configuration file not found: $CONFIG_FILE"
     error "Please mount your config directory: -v ./config:/app/config:ro"
     exit 1
+fi
+
+# Check if ZeroBus is enabled in the config
+ZEROBUS_ENABLED=$(grep -A 1 "^zerobus:" "$CONFIG_FILE" | grep "enabled:" | awk '{print $2}' | head -1)
+
+if [ "$ZEROBUS_ENABLED" = "true" ]; then
+    log "ZeroBus is enabled - validating Databricks credentials..."
+
+    REQUIRED_VARS=(
+        "DATABRICKS_CLIENT_ID"
+        "DATABRICKS_CLIENT_SECRET"
+    )
+
+    MISSING_VARS=()
+    for var in "${REQUIRED_VARS[@]}"; do
+        if [ -z "${!var}" ]; then
+            MISSING_VARS+=("$var")
+        fi
+    done
+
+    if [ ${#MISSING_VARS[@]} -gt 0 ]; then
+        error "Missing required environment variables: ${MISSING_VARS[*]}"
+        error "Please set these variables in your .env file or docker-compose.yml"
+        exit 1
+    fi
+
+    log "Databricks credentials validated ✓"
+else
+    log "ZeroBus is disabled - skipping Databricks credential validation"
+    log "You can configure ZeroBus settings via the web UI at http://localhost:8080"
 fi
 
 log "Configuration file found: $CONFIG_FILE ✓"
@@ -120,20 +130,22 @@ if grep -q "enabled: true" "$CONFIG_FILE" 2>/dev/null; then
     done
 fi
 
-# Test network connectivity to Databricks
-log "Testing connectivity to Databricks..."
+# Test network connectivity to Databricks (only if ZeroBus is enabled)
+if [ "$ZEROBUS_ENABLED" = "true" ]; then
+    log "Testing connectivity to Databricks..."
 
-# Extract workspace host from config if not set
-if [ -z "$DATABRICKS_WORKSPACE_HOST" ]; then
-    DATABRICKS_WORKSPACE_HOST=$(grep "workspace_host:" "$CONFIG_FILE" | head -1 | awk '{print $2}' | tr -d '"')
-fi
+    # Extract workspace host from config if not set
+    if [ -z "$DATABRICKS_WORKSPACE_HOST" ]; then
+        DATABRICKS_WORKSPACE_HOST=$(grep "workspace_host:" "$CONFIG_FILE" | head -1 | awk '{print $2}' | tr -d '"')
+    fi
 
-if [ ! -z "$DATABRICKS_WORKSPACE_HOST" ]; then
-    if timeout 10 curl -s -o /dev/null -w "%{http_code}" "$DATABRICKS_WORKSPACE_HOST" | grep -q "200\|401\|403"; then
-        log "Databricks workspace is reachable ✓"
-    else
-        warn "Could not reach Databricks workspace: $DATABRICKS_WORKSPACE_HOST"
-        warn "Check your network configuration and firewall rules"
+    if [ ! -z "$DATABRICKS_WORKSPACE_HOST" ]; then
+        if timeout 10 curl -s -o /dev/null -w "%{http_code}" "$DATABRICKS_WORKSPACE_HOST" | grep -q "200\|401\|403"; then
+            log "Databricks workspace is reachable ✓"
+        else
+            warn "Could not reach Databricks workspace: $DATABRICKS_WORKSPACE_HOST"
+            warn "Check your network configuration and firewall rules"
+        fi
     fi
 fi
 

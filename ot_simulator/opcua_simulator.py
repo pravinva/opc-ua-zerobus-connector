@@ -292,6 +292,14 @@ class OPCUASimulator:
             logger.info(f"OPC-UA server started at {self.endpoint}")
             self._running = True
 
+            # Register with discovery server for network discovery
+            try:
+                await self.server.register_to_discovery()
+                logger.info(f"✓ Registered to discovery server at opc.tcp://localhost:4840")
+            except Exception as e:
+                logger.warning(f"Could not register to discovery server: {e}")
+                logger.info("Server will still be accessible via direct endpoint connection")
+
             try:
                 while self._running:
                     # Update all sensors (with PLC metadata if enabled)

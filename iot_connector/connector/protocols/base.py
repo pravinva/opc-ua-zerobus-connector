@@ -94,6 +94,7 @@ class ProtocolClient(ABC):
         self.on_stats = on_stats
         self._status = ConnectionStatus()
         self._stop_evt = asyncio.Event()
+        self._last_data_time: float | None = None  # Track last data received time
 
         # Reconnection settings
         self.reconnect_enabled = bool(config.get("reconnect_enabled", True))

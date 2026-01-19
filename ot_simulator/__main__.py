@@ -25,6 +25,7 @@ from ot_simulator.config_loader import load_config, SimulatorConfig
 from ot_simulator.opcua_simulator import OPCUASimulator
 from ot_simulator.mqtt_simulator import MQTTSimulator
 from ot_simulator.modbus_simulator import ModbusSimulator
+from ot_simulator.mdns_advertiser import MDNSAdvertiser
 
 logger = logging.getLogger("ot_simulator")
 
@@ -38,6 +39,7 @@ class SimulatorManager:
         self.tasks: list[asyncio.Task] = []
         self._shutdown = asyncio.Event()
         self.unified_manager = unified_manager
+        self.mdns_advertiser = MDNSAdvertiser()
 
     async def start(self, protocols: list[str] | None = None):
         """Start specified protocol simulators.
@@ -104,6 +106,38 @@ class SimulatorManager:
             logger.error("No simulators started. Check config or protocol selection.")
             return
 
+        # Start mDNS advertisement
+        logger.info("mDNS advertisement starting...")
+        self.mdns_advertiser.start()
+        logger.info("mDNS advertiser initialized")
+
+        # Advertise each enabled service
+        if "opcua" in protocols and self.config.opcua.enabled:
+            # Extract host and port from endpoint (e.g., "opc.tcp://0.0.0.0:4840/...")
+            endpoint = self.config.opcua.endpoint
+            if "://" in endpoint:
+                parts = endpoint.split("://")[1].split("/")[0].split(":")
+                host = parts[0] if len(parts) > 0 else "127.0.0.1"
+                port = int(parts[1]) if len(parts) > 1 else 4840
+            else:
+                host, port = "127.0.0.1", 4840
+            self.mdns_advertiser.advertise_opcua(host=host, port=port)
+
+        if "mqtt" in protocols and self.config.mqtt.enabled:
+            broker = self.config.mqtt.broker
+            port = broker.tls_port if broker.use_tls else broker.port
+            self.mdns_advertiser.advertise_mqtt(
+                host=broker.host,
+                port=port,
+                tls=broker.use_tls
+            )
+
+        if "modbus" in protocols and self.config.modbus.enabled and self.config.modbus.tcp.enabled:
+            self.mdns_advertiser.advertise_modbus(
+                host=self.config.modbus.tcp.host,
+                port=self.config.modbus.tcp.port
+            )
+
         # Setup signal handlers
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGTERM, signal.SIGINT):
@@ -127,6 +161,9 @@ class SimulatorManager:
 
         self._shutdown.set()
         logger.info("Stopping all simulators...")
+
+        # Stop mDNS advertisement
+        self.mdns_advertiser.stop()
 
         # Stop each simulator
         for name, sim in self.simulators.items():

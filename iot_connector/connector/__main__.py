@@ -16,6 +16,7 @@ Supports:
 import asyncio
 import argparse
 import logging
+import os
 import signal
 import sys
 from pathlib import Path
@@ -189,7 +190,8 @@ class ConnectorApp:
         logger.info(f"  Circuit breaker: {status['circuit_breaker_state']}")
 
         bp_stats = status['backpressure_stats']
-        logger.info(f"  Queue depth: {bp_stats['memory_queue_depth']}/{bp_stats['max_queue_size']}")
+        queue_depth = bp_stats.get('current_queue_depth', 0)
+        logger.info(f"  Queue depth: {queue_depth}")
 
         if self.gui_enabled and self.web_server:
             gui_config = self.config.get('web_gui', {})
@@ -278,8 +280,8 @@ Version: {version}
     parser.add_argument(
         '--config', '-c',
         type=Path,
-        default=Path('config.yaml'),
-        help='Path to YAML configuration file (default: config.yaml)'
+        default=Path(os.getenv('CONFIG_PATH', 'config.yaml')),
+        help='Path to YAML configuration file (default: config.yaml or CONFIG_PATH env var)'
     )
 
     parser.add_argument(

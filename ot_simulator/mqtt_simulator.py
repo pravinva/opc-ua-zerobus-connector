@@ -162,8 +162,6 @@ class MQTTSimulator:
     async def _ensure_broker_running(self, host: str, port: int):
         """Check if MQTT broker is running and start it if needed."""
         import socket
-        import subprocess
-        import shutil
 
         # Check if broker is already running
         try:
@@ -177,39 +175,42 @@ class MQTTSimulator:
         except Exception:
             pass
 
-        # Try to start Mosquitto
-        mosquitto_path = shutil.which("mosquitto")
-        if not mosquitto_path:
-            # Try common installation paths
-            possible_paths = [
-                "/opt/homebrew/opt/mosquitto/sbin/mosquitto",
-                "/usr/local/sbin/mosquitto",
-                "/usr/sbin/mosquitto",
-            ]
-            for path in possible_paths:
-                if shutil.which(path):
-                    mosquitto_path = path
-                    break
+        # Start embedded Python MQTT broker (amqtt)
+        try:
+            from amqtt.broker import Broker
 
-        if mosquitto_path:
-            logger.info(f"Starting Mosquitto broker on port {port}...")
-            try:
-                # Start mosquitto in background
-                subprocess.Popen(
-                    [mosquitto_path, "-p", str(port)],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                # Wait a bit for broker to start
-                await asyncio.sleep(2)
-                logger.info("Mosquitto broker started successfully")
-                self._running = True  # Set running flag early
-            except Exception as e:
-                logger.warning(f"Failed to start Mosquitto: {e}")
-                logger.info("Please start Mosquitto manually: mosquitto -p 1883")
-        else:
-            logger.warning("Mosquitto not found. Please install: brew install mosquitto")
-            logger.info("Or start manually: mosquitto -p 1883")
+            logger.info(f"Starting embedded MQTT broker on 0.0.0.0:{port}...")
+
+            # Create broker config
+            broker_config = {
+                'listeners': {
+                    'default': {
+                        'type': 'tcp',
+                        'bind': f'0.0.0.0:{port}',
+                    },
+                },
+                'auth': {
+                    'allow-anonymous': True,
+                },
+                'topic-check': {
+                    'enabled': False
+                }
+            }
+
+            # Create and start broker in background
+            self._broker = Broker(config=broker_config)
+            asyncio.create_task(self._broker.start())
+
+            # Wait a bit for broker to start
+            await asyncio.sleep(2)
+            logger.info(f"Embedded MQTT broker started successfully on 0.0.0.0:{port}")
+            self._running = True  # Set running flag early
+        except ImportError:
+            logger.warning("amqtt package not available. Install with: pip install amqtt")
+            logger.info("MQTT broker will not be started - clients can connect to external broker")
+        except Exception as e:
+            logger.warning(f"Failed to start embedded MQTT broker: {e}")
+            logger.info("MQTT broker will not be started - clients can connect to external broker")
 
     async def _publish_sensor(self, path: str, simulator: SensorSimulator):
         """Publish a single sensor update."""

@@ -1,0 +1,102 @@
+# Production IoT Connector Configuration
+# Enterprise-grade connector for streaming OT data to Databricks Unity Catalog
+
+# Web GUI Configuration
+web_gui:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+
+# Monitoring Configuration
+monitoring:
+  health_check:
+    enabled: true
+    port: 8081
+  prometheus:
+    enabled: true
+    port: 9090
+
+# Data Sources - OPC UA, MQTT, and Modbus
+sources:
+  # OPC UA Source - Connect to OT Simulator
+  - name: opcua_simulator
+    endpoint: opc.tcp://localhost:4840/ot-simulator/server/
+    protocol: opcua
+    enabled: true
+
+    # Publishing interval
+    publishing_interval_ms: 1000
+
+    # Variable discovery
+    variable_limit: 100  # Increase for production
+
+    # Security settings
+    security:
+      mode: None  # Use Basic256Sha256 + SignAndEncrypt in production
+
+    # Reconnection settings
+    reconnect:
+      enabled: true
+      initial_delay: 1
+      max_delay: 60
+      backoff_multiplier: 2.0
+
+# ZeroBus Configuration (Databricks Unity Catalog Streaming)
+zerobus:
+  enabled: true
+  workspace_host: "https://e2-demo-field-eng.cloud.databricks.com"
+  zerobus_endpoint: "https://e2-demo-field-eng.cloud.databricks.com/api/2.0/streaming-ingest"
+
+  # OAuth2 M2M Authentication
+  # NOTE: Use credential injection for secure secrets management
+  auth:
+    client_id: "${env:DATABRICKS_CLIENT_ID}"  # Read from environment
+    client_secret: "${env:DATABRICKS_CLIENT_SECRET}"
+
+  # Target Unity Catalog Table
+  target:
+    catalog: "main"
+    schema: "iot_data"
+    table: "sensor_readings"
+
+  # Batch Settings
+  batch:
+    max_records: 1000
+    timeout_seconds: 5.0
+
+  # Retry Settings
+  retry:
+    max_attempts: 5
+    initial_backoff_seconds: 1.0
+    max_backoff_seconds: 300.0
+    backoff_multiplier: 2.0
+
+  # Circuit Breaker
+  circuit_breaker:
+    failure_threshold: 5
+    timeout_seconds: 60
+    half_open_max_calls: 3
+
+# Backpressure Management
+backpressure:
+  # Memory queue
+  max_queue_size: 10000
+  drop_policy: oldest  # oldest, newest, random
+
+  # Disk spool (encrypted)
+  disk_spool:
+    enabled: true
+    spool_dir: "/app/spool"
+    max_size_mb: 500
+    compression: "gzip"
+
+# Credential Manager
+credentials:
+  storage:
+    type: env  # env, file, vault
+
+# Logging
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  format: json  # json, text
+  output: stdout  # stdout, file

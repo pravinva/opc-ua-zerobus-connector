@@ -59,6 +59,18 @@ class OPCUAClient(ProtocolClient):
         self._monitored_items: list[Any] = []
         self._namespaces: list[str] = []
 
+        # Normalization support
+        self._normalization_enabled = config.get("normalization_enabled", False)
+        self._normalizer = None
+        if self._normalization_enabled:
+            try:
+                from connector.normalizer import get_normalization_manager
+                self._norm_manager = get_normalization_manager()
+                if self._norm_manager.is_enabled():
+                    self._normalizer = self._norm_manager.get_normalizer("opcua")
+            except Exception as e:
+                logger.warning(f"Could not initialize normalizer: {e}")
+
     @property
     def protocol_type(self) -> ProtocolType:
         return ProtocolType.OPCUA
@@ -115,6 +127,7 @@ class OPCUAClient(ProtocolClient):
             logger.info(f"✓ Connected to OPC UA server: {self.endpoint}")
         except Exception as e:
             logger.error(f"Failed to connect to {self.endpoint}: {e}")
+            self._client = None  # Reset client on connection failure
             raise
 
         # Load namespace array
@@ -239,6 +252,9 @@ class OPCUAClient(ProtocolClient):
     ) -> None:
         """Handle data change notification."""
         try:
+            # Update last data time
+            self._last_data_time = time.time()
+
             # Extract node information
             node_id_str = str(node.nodeid)
             namespace = node.nodeid.NamespaceIndex if hasattr(node.nodeid, 'NamespaceIndex') else 0
@@ -263,31 +279,103 @@ class OPCUAClient(ProtocolClient):
             # Get browse path (best effort)
             browse_path = node_id_str
 
-            # Create record
-            record = ProtocolRecord(
-                event_time_ms=int(time.time() * 1000),
-                source_name=self.source_name,
-                endpoint=self.endpoint,
-                protocol_type=self.protocol_type,
-                topic_or_path=browse_path,
-                value=value,
-                value_type=value_type,
-                value_num=value_num,
-                metadata={
-                    "namespace": namespace,
-                    "node_id": node_id_str,
-                    "status_code": status_code,
-                },
-                status_code=status_code,
-                status=status,
-            )
-
-            self.on_record(record)
+            # Check if normalization is enabled
+            if self._normalizer:
+                # Create raw data dict for normalizer
+                raw_data = self._create_raw_data(node_id_str, namespace, value, status_code, browse_path)
+                try:
+                    normalized = self._normalizer.normalize(raw_data)
+                    # Send normalized data
+                    self.on_record(normalized.to_dict())
+                except Exception as norm_error:
+                    # Normalization failed, fall back to raw mode
+                    self._emit_stats({
+                        "normalization_error": f"{type(norm_error).__name__}: {norm_error}",
+                        "node_id": node_id_str,
+                    })
+                    # Create and send raw record as fallback
+                    record = ProtocolRecord(
+                        event_time_ms=int(time.time() * 1000),
+                        source_name=self.source_name,
+                        endpoint=self.endpoint,
+                        protocol_type=self.protocol_type,
+                        topic_or_path=browse_path,
+                        value=value,
+                        value_type=value_type,
+                        value_num=value_num,
+                        metadata={
+                            "namespace": namespace,
+                            "node_id": node_id_str,
+                            "status_code": status_code,
+                        },
+                        status_code=status_code,
+                        status=status,
+                    )
+                    self.on_record(record)
+            else:
+                # Raw mode (existing behavior)
+                record = ProtocolRecord(
+                    event_time_ms=int(time.time() * 1000),
+                    source_name=self.source_name,
+                    endpoint=self.endpoint,
+                    protocol_type=self.protocol_type,
+                    topic_or_path=browse_path,
+                    value=value,
+                    value_type=value_type,
+                    value_num=value_num,
+                    metadata={
+                        "namespace": namespace,
+                        "node_id": node_id_str,
+                        "status_code": status_code,
+                    },
+                    status_code=status_code,
+                    status=status,
+                )
+                self.on_record(record)
 
         except Exception as e:
             self._emit_stats({
                 "datachange_error": f"{type(e).__name__}: {e}",
             })
+
+    def _create_raw_data(
+        self,
+        node_id: str,
+        namespace: int,
+        value: Any,
+        status_code: int,
+        browse_path: str
+    ) -> dict[str, Any]:
+        """
+        Create raw data dict for normalizer from OPC-UA data change.
+
+        Args:
+            node_id: Node ID string
+            namespace: Namespace index
+            value: Value from node
+            status_code: OPC-UA status code
+            browse_path: Browse path string
+
+        Returns:
+            Dictionary with normalized format expected by OPCUANormalizer
+        """
+        # Handle Variant type
+        if isinstance(value, Variant):
+            actual_value = value.Value
+        else:
+            actual_value = value
+
+        return {
+            "node_id": node_id,
+            "value": {
+                "value": actual_value,
+                "source_timestamp": int(time.time() * 1000),  # Current time in ms
+                "status_code": status_code,
+            },
+            "browse_path": browse_path,
+            "server_url": self.endpoint,
+            "config": self.config,  # Pass config for context extraction
+        }
 
     class _DataChangeHandler:
         """Handler for OPC-UA data change notifications."""

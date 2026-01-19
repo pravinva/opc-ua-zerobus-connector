@@ -3,9 +3,9 @@
 
 # Core dependencies
 databricks-sdk==0.19.0
-databricks-zerobus-ingest-sdk>=1.0.0  # Official ZeroBus SDK
+databricks-zerobus-ingest-sdk==0.2.0  # Official ZeroBus SDK
 pyyaml==6.0.1
-cryptography==42.0.0
+cryptography>=41.0.5,<42  # Compatible with pyopenssl and asyncua
 python-dotenv==1.0.0
 
 # Protocol support
@@ -42,9 +42,6 @@ structlog==24.1.0
 # Certificate management
 pyopenssl==23.3.0
 certifi==2023.11.17
-
-# Queue management
-queue==0.2.0
 
 # Testing (optional, for development)
 pytest==7.4.3

@@ -57,6 +57,19 @@ class MQTTClient(ProtocolClient):
         self._client: aiomqtt.Client | None = None
         self._messages_received = 0
 
+        # Normalization support
+        self._normalization_enabled = config.get("normalization_enabled", False)
+        self._normalizer = None
+        if self._normalization_enabled:
+            try:
+                from connector.normalizer import get_normalization_manager
+                self._norm_manager = get_normalization_manager()
+                if self._norm_manager.is_enabled():
+                    self._normalizer = self._norm_manager.get_normalizer("mqtt")
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Could not initialize normalizer: {e}")
+
     def _parse_endpoint(self) -> None:
         """Parse MQTT endpoint URL."""
         endpoint = self.endpoint.strip()
@@ -109,9 +122,9 @@ class MQTTClient(ProtocolClient):
             port=self.port,
             username=self.username,
             password=self.password,
-            client_id=self.client_id,
+            identifier=self.client_id,
             tls_params=tls_params,
-            clean_session=self.clean_session,
+            clean_start=self.clean_session,
             keepalive=self.keepalive,
         )
 
@@ -142,16 +155,41 @@ class MQTTClient(ProtocolClient):
                 break
 
             try:
-                record = self._parse_message(message)
-                if record:
-                    self.on_record(record)
-                    self._messages_received += 1
+                # Update last data time
+                self._last_data_time = time.time()
 
-                    if self._messages_received % 100 == 0:
+                # Check if normalization is enabled
+                if self._normalizer:
+                    # Create raw data dict for normalizer
+                    raw_data = self._create_raw_data(message)
+                    try:
+                        normalized = self._normalizer.normalize(raw_data)
+                        # Send normalized data
+                        self.on_record(normalized.to_dict())
+                        self._messages_received += 1
+                    except Exception as norm_error:
+                        # Normalization failed, fall back to raw mode
                         self._emit_stats({
-                            "messages_received": self._messages_received,
-                            "last_message_time_ms": int(time.time() * 1000),
+                            "normalization_error": f"{type(norm_error).__name__}: {norm_error}",
+                            "topic": message.topic.value if hasattr(message.topic, 'value') else str(message.topic),
                         })
+                        # Send raw data as fallback
+                        record = self._parse_message(message)
+                        if record:
+                            self.on_record(record)
+                            self._messages_received += 1
+                else:
+                    # Raw mode (existing behavior)
+                    record = self._parse_message(message)
+                    if record:
+                        self.on_record(record)
+                        self._messages_received += 1
+
+                if self._messages_received % 100 == 0:
+                    self._emit_stats({
+                        "messages_received": self._messages_received,
+                        "last_message_time_ms": int(time.time() * 1000),
+                    })
 
             except Exception as e:
                 # Log but don't crash on parse errors
@@ -243,6 +281,36 @@ class MQTTClient(ProtocolClient):
             status_code=0,
             status="Good",
         )
+
+    def _create_raw_data(self, message: Any) -> dict[str, Any]:
+        """
+        Create raw data dict for normalizer from MQTT message.
+
+        Args:
+            message: MQTT message object
+
+        Returns:
+            Dictionary with normalized format expected by MQTTNormalizer
+        """
+        topic = message.topic.value if hasattr(message.topic, 'value') else str(message.topic)
+        payload = message.payload
+
+        # Convert payload to string or keep as-is
+        if isinstance(payload, bytes):
+            try:
+                payload = payload.decode('utf-8')
+            except UnicodeDecodeError:
+                payload = payload.hex()
+
+        return {
+            "topic": topic,
+            "payload": payload,
+            "qos": message.qos,
+            "retained": message.retain if hasattr(message, 'retain') else False,
+            "timestamp": int(time.time() * 1000),  # Current time in ms
+            "broker_address": f"{self.host}:{self.port}",
+            "config": self.config,  # Pass config for context extraction
+        }
 
     async def test_connection(self) -> ProtocolTestResult:
         """Test MQTT connectivity."""

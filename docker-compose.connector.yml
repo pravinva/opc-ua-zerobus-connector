@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  iot-connector:
+    image: iot-connector:latest
+    container_name: iot-connector
+    hostname: iot-connector
+    ports:
+      - "8080:8080"
+    networks:
+      - opc-ua-zerobus-connector_ot-sim-network
+      - opc-ua-zerobus-connector_ot-sim-network-2
+      - opc-ua-zerobus-connector_ot-sim-network-3
+    environment:
+      - CONNECTOR_NAME=IoT-Connector
+    working_dir: /app/iot_connector
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  opc-ua-zerobus-connector_ot-sim-network:
+    external: true
+  opc-ua-zerobus-connector_ot-sim-network-2:
+    external: true
+  opc-ua-zerobus-connector_ot-sim-network-3:
+    external: true

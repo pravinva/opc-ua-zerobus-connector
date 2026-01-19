@@ -55,6 +55,19 @@ class ModbusClient(ProtocolClient):
         self._client: Any = None
         self._polls_completed = 0
 
+        # Normalization support
+        self._normalization_enabled = config.get("normalization_enabled", False)
+        self._normalizer = None
+        if self._normalization_enabled:
+            try:
+                from connector.normalizer import get_normalization_manager
+                self._norm_manager = get_normalization_manager()
+                if self._norm_manager.is_enabled():
+                    self._normalizer = self._norm_manager.get_normalizer("modbus")
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Could not initialize normalizer: {e}")
+
     def _parse_endpoint(self) -> None:
         """Parse Modbus endpoint."""
         endpoint = self.endpoint.strip()
@@ -149,7 +162,27 @@ class ModbusClient(ProtocolClient):
 
                     records = await self._poll_register(reg_config)
                     for record in records:
-                        self.on_record(record)
+                        # Update last data time
+                        self._last_data_time = time.time()
+
+                        # Check if normalization is enabled
+                        if self._normalizer:
+                            # Create raw data for normalizer
+                            raw_data = self._create_raw_data_from_record(record, reg_config)
+                            try:
+                                normalized = self._normalizer.normalize(raw_data)
+                                self.on_record(normalized.to_dict())
+                            except Exception as norm_error:
+                                # Normalization failed, fall back to raw mode
+                                self._emit_stats({
+                                    "normalization_error": f"{type(norm_error).__name__}: {norm_error}",
+                                    "address": record.metadata.get("address"),
+                                })
+                                # Send raw record as fallback
+                                self.on_record(record)
+                        else:
+                            # Raw mode (existing behavior)
+                            self.on_record(record)
 
                 self._polls_completed += 1
 
@@ -269,6 +302,48 @@ class ModbusClient(ProtocolClient):
             })
 
         return records
+
+    def _create_raw_data_from_record(
+        self,
+        record: ProtocolRecord,
+        reg_config: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Create raw data dict for normalizer from ProtocolRecord.
+
+        Args:
+            record: ProtocolRecord from poll
+            reg_config: Register configuration dict
+
+        Returns:
+            Dictionary with normalized format expected by ModbusNormalizer
+        """
+        # Extract device address from endpoint
+        device_address = self.host if hasattr(self, 'host') else self.endpoint
+
+        # Get register address from metadata
+        register_address = record.metadata.get("address", 0)
+
+        # Determine if read was successful
+        success = record.status_code == 0
+
+        return {
+            "device_address": device_address,
+            "register_address": register_address,
+            "register_count": reg_config.get("count", 1),
+            "raw_registers": [record.metadata.get("raw_value", 0)],
+            "timestamp": record.event_time_ms,
+            "success": success,
+            "exception_code": None if success else record.status_code,
+            "timeout": False,
+            "config": {
+                "data_type": "int16",  # Default, could be configured
+                "scale_factor": reg_config.get("scale", 1.0),
+                "engineering_units": reg_config.get("units"),
+                "tag_name": reg_config.get("name"),
+                **self.config,  # Include all config for context
+            }
+        }
 
     async def test_connection(self) -> ProtocolTestResult:
         """Test Modbus connectivity."""

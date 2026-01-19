@@ -1,0 +1,95 @@
+# Tag Normalization Configuration
+# Converts raw protocol data to unified tag structure
+
+# Operating mode: "raw" or "normalized"
+mode: raw  # Default to raw for backward compatibility
+
+# Version
+version: "1.0"
+
+# Path Building Configuration
+path_building:
+  # Default template for all protocols
+  # Available variables: {site_id}, {line_id}, {equipment_id}, {signal_type}
+  default_template: "{site_id}/{line_id}/{equipment_id}/{signal_type}"
+
+  # Protocol-specific templates (override default)
+  opcua_template: "{site_id}/{line_id}/{equipment_id}/{signal_type}"
+  modbus_template: "{site_id}/{line_id}/{equipment_id}/{signal_type}"
+  mqtt_template: "{site_id}/{line_id}/{equipment_id}/{signal_type}"
+
+  # Extraction patterns (regex) for parsing source identifiers
+  opcua_patterns:
+    # Extract line number from patterns like "Line3" or "line_3"
+    line_id: "(?i)line[_\\s]*([0-9]+)"
+    # Extract machine/equipment from patterns like "Machine1" or "Press2"
+    equipment_id: "(?i)(machine|press|pump|tank|conveyor)[_\\s]*([0-9]+)"
+
+  modbus_patterns:
+    # Modbus relies mostly on config, but can extract from addresses
+    register_type: "^([0-9]+)"
+
+  mqtt_patterns:
+    # MQTT topics are already hierarchical, minimal pattern matching needed
+    site_id: "^([^/]+)"
+
+# Quality Mapping Configuration
+quality:
+  # MQTT age threshold for UNCERTAIN quality (seconds)
+  mqtt_age_threshold: 300  # 5 minutes
+
+  # OPC-UA status code ranges (using standard OPC-UA codes)
+  opcua_good_max: 0x3FFFFFFF
+  opcua_uncertain_max: 0x7FFFFFFF
+
+# Output Configuration
+output:
+  # Target Delta table for normalized data
+  normalized_table: "main.iot_bronze.normalized_tags"
+
+  # Target Delta table for raw data (used in raw mode or dual-write)
+  raw_table: "main.iot_bronze.raw_protocol_data"
+
+  # Write both raw and normalized (requires both tables configured)
+  write_both: false
+
+  # Batching configuration
+  batch_size: 100
+  flush_interval_seconds: 5
+
+# Protocol-Specific Settings
+protocols:
+  opcua:
+    # Extract engineering units from OPC-UA nodes
+    extract_engineering_units: true
+
+    # Prefer source timestamp over server timestamp
+    prefer_source_timestamp: true
+
+  modbus:
+    # Default data type if not configured per register
+    default_data_type: "int16"
+
+    # Default byte order
+    default_byte_order: "big"
+
+    # Default word order for multi-register values
+    default_word_order: "big"
+
+  mqtt:
+    # Attempt to parse JSON payloads
+    attempt_json_parse: true
+
+    # Extract timestamp from JSON payload if present
+    extract_payload_timestamp: true
+
+# Feature Flags
+features:
+  # Enable normalization (can be toggled via UI)
+  normalization_enabled: false
+
+  # Include protocol-specific metadata in normalized tags
+  include_protocol_metadata: true
+
+  # Generate tag IDs using hash (vs sequential)
+  use_hash_tag_ids: true

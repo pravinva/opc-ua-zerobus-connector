@@ -12,8 +12,17 @@ import time
 from typing import Any
 
 try:
-    from pymodbus.datastore import ModbusSequentialDataBlock, ModbusSlaveContext, ModbusServerContext
-    from pymodbus.device import ModbusDeviceIdentification
+    from pymodbus.datastore import ModbusSequentialDataBlock, ModbusServerContext
+    # pymodbus 3.x: ModbusSlaveContext was renamed to ModbusDeviceContext
+    try:
+        from pymodbus.datastore import ModbusSlaveContext
+    except ImportError:
+        from pymodbus.datastore import ModbusDeviceContext as ModbusSlaveContext
+    # pymodbus 3.x: ModbusDeviceIdentification moved to pymodbus.pdu.device
+    try:
+        from pymodbus.device import ModbusDeviceIdentification
+    except (ImportError, ModuleNotFoundError):
+        from pymodbus.pdu.device import ModbusDeviceIdentification
     from pymodbus.server import StartAsyncTcpServer, StartAsyncSerialServer
     import pymodbus
     version = getattr(pymodbus, '__version__', 'unknown')
@@ -56,9 +65,17 @@ class ModbusSimulator:
 
                 # Try importing again
                 from pymodbus.datastore import ModbusSequentialDataBlock as MSB
-                from pymodbus.datastore import ModbusSlaveContext as MSC
                 from pymodbus.datastore import ModbusServerContext as MSRC
-                from pymodbus.device import ModbusDeviceIdentification as MDI
+                # pymodbus 3.x: ModbusSlaveContext was renamed to ModbusDeviceContext
+                try:
+                    from pymodbus.datastore import ModbusSlaveContext as MSC
+                except ImportError:
+                    from pymodbus.datastore import ModbusDeviceContext as MSC
+                # pymodbus 3.x: ModbusDeviceIdentification moved to pymodbus.pdu.device
+                try:
+                    from pymodbus.device import ModbusDeviceIdentification as MDI
+                except (ImportError, ModuleNotFoundError):
+                    from pymodbus.pdu.device import ModbusDeviceIdentification as MDI
                 from pymodbus.server import StartAsyncTcpServer as SATS
                 from pymodbus.server import StartAsyncSerialServer as SASS
                 import pymodbus as pm
@@ -130,7 +147,7 @@ class ModbusSimulator:
         coils = ModbusSequentialDataBlock(0, [False] * register_count)
         discrete_inputs = ModbusSequentialDataBlock(0, [False] * register_count)
 
-        # Create slave context
+        # Create device context (slave context in pymodbus 2.x)
         store = ModbusSlaveContext(
             di=discrete_inputs,
             co=coils,
@@ -139,7 +156,12 @@ class ModbusSimulator:
         )
 
         # Create server context
-        self.context = ModbusServerContext(slaves=store, single=True)
+        # pymodbus 3.x uses 'devices' parameter instead of 'slaves'
+        try:
+            self.context = ModbusServerContext(slaves=store, single=True)
+        except TypeError:
+            # pymodbus 3.x API
+            self.context = ModbusServerContext(devices=store, single=True)
 
         logger.info(
             f"Initialized Modbus server with {len(self.simulators)} sensors mapped to registers 0-{max_address}"

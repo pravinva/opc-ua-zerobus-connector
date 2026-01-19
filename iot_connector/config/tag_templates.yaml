@@ -1,0 +1,110 @@
+# Tag Path Templates
+# Define how to structure tag paths for different use cases
+
+# ISA-95 Manufacturing Hierarchy
+isa95:
+  template: "{enterprise}/{site}/{area}/{line}/{equipment}/{signal_type}"
+  description: "Full ISA-95 hierarchy with 6 levels"
+
+# Simplified Manufacturing
+manufacturing_simple:
+  template: "{site}/{line}/{equipment}/{signal_type}"
+  description: "Common 4-level manufacturing hierarchy"
+
+# Purdue Model
+purdue:
+  template: "{site}/{level}/{zone}/{equipment}/{signal_type}"
+  description: "Purdue Model for ICS security zones"
+  levels:
+    - level0: "Process (sensors/actuators)"
+    - level1: "Basic Control (PLCs)"
+    - level2: "Supervisory Control (SCADA)"
+    - level3: "Manufacturing Operations (MES)"
+    - level4: "Business Planning (ERP)"
+
+# Asset-Based
+asset:
+  template: "{asset_class}/{asset_id}/{signal_type}"
+  description: "Asset-centric structure"
+  examples:
+    - "pump/pump_001/flow_rate"
+    - "motor/motor_042/temperature"
+    - "valve/valve_123/position"
+
+# Location-Based
+location:
+  template: "{building}/{floor}/{room}/{equipment}/{signal_type}"
+  description: "Physical location hierarchy"
+
+# Utility/Infrastructure
+utility:
+  template: "{utility_type}/{zone}/{meter_id}/{signal_type}"
+  description: "For utilities (power, water, gas)"
+  examples:
+    - "electrical/building_a/meter_001/power_kwh"
+    - "water/zone_2/meter_045/flow_gpm"
+    - "hvac/floor_3/ahu_02/temp_supply"
+
+# Simple Flat
+flat:
+  template: "{equipment}_{signal_type}"
+  description: "Flat structure with no hierarchy"
+
+# Default Context Values
+# Used when specific context is not provided
+defaults:
+  site_id: "unknown_site"
+  line_id: "unknown_line"
+  equipment_id: "unknown_equipment"
+  signal_type: "unknown_signal"
+
+# Common Signal Type Mappings
+# Maps raw signal names to standardized types
+signal_mappings:
+  # Temperature
+  - pattern: "(?i)(temp|temperature)"
+    signal_type: "temperature"
+
+  # Pressure
+  - pattern: "(?i)(press|pressure)"
+    signal_type: "pressure"
+
+  # Flow
+  - pattern: "(?i)(flow|flowrate)"
+    signal_type: "flow"
+
+  # Level
+  - pattern: "(?i)(level|height)"
+    signal_type: "level"
+
+  # Speed/RPM
+  - pattern: "(?i)(speed|rpm|velocity)"
+    signal_type: "speed"
+
+  # Vibration
+  - pattern: "(?i)(vib|vibration)"
+    signal_type: "vibration"
+
+  # Power
+  - pattern: "(?i)(power|watt|kw)"
+    signal_type: "power"
+
+  # Current
+  - pattern: "(?i)(current|amp)"
+    signal_type: "current"
+
+  # Voltage
+  - pattern: "(?i)(volt|voltage)"
+    signal_type: "voltage"
+
+  # Position
+  - pattern: "(?i)(pos|position)"
+    signal_type: "position"
+
+  # Status/State
+  - pattern: "(?i)(status|state|mode)"
+    signal_type: "status"
+
+  # Alarm/Fault
+  - pattern: "(?i)(alarm|fault|error)"
+    signal_type: "alarm"

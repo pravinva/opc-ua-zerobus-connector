@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  ot-simulator-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.simulator
+    container_name: ot-simulator-3
+    hostname: ot-simulator-3
+    ports:
+      # OPC UA Server
+      - "4842:4840"
+      # MQTT Broker
+      - "1885:1883"
+      # Modbus TCP
+      - "5022:5020"
+    networks:
+      ot-sim-network-3:
+        ipv4_address: 172.27.0.10
+    environment:
+      - SIMULATOR_ID=3
+      - SIMULATOR_NAME=OT-Simulator-3
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.connect(('localhost', 4840)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  ot-sim-network-3:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.27.0.0/24
+          gateway: 172.27.0.1

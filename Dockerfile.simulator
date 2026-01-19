@@ -1,0 +1,26 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# No system dependencies needed (using pure Python MQTT broker)
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Copy simulator code
+COPY ot_simulator/ /app/ot_simulator/
+COPY README.md /app/README.md
+
+# Non-root user
+RUN useradd -m otsim && chown -R otsim:otsim /app
+USER otsim
+
+# Expose ports for OPC UA, MQTT, Modbus TCP
+EXPOSE 4840 1883 5020
+
+# Run simulator with all protocols
+CMD ["python", "-m", "ot_simulator", "--protocol", "all"]
